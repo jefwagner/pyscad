@@ -33,7 +33,7 @@ are two parts of how it works that I wish worked differently.
 strange behaviors where surfaces that should be coincident are not. I end up defining an
 small distance epsilon, and moving the surfaces up or down by the epsilon to make sure
 unions and differences are handled correctly.
-2. OpenSCAD instantly meshes curved shapes such as sphereis or cylinders based on a
+2. OpenSCAD instantly meshes curved shapes such as spheres or cylinders based on a
 fineness parameter (`$fn`). There are advantages to this, but I would like a cylinder to
 be based on a circle and allow me to do all the transformations and manipulations first
 and only mesh the object when exporting. 
@@ -47,11 +47,11 @@ OpenSCAD.
 To address the first issue, instead of using floating point numbers internal for the
 representation of the geometry, we will instead use rounded floating point intervals for
 all the geometric properties. This treats the values as small intervals, and we can
-garentee that the 'true' value will be somewhere in the interval. This allows us to add
-1/3 three times and get a value that overlaps with 1.
+guarantee that the 'true' value will be somewhere in the interval. This allows us to add
+one third three times and get a value that overlaps with one.
 
 For the second issue, I will represent a solid object as a CSG tree and only worry about
-translating that tree into a mesh as a  as a final step. The path for producing these
+translating that tree into a mesh as a as a final step. The path for producing these
 outputs will involve turning the CSG tree into a boundary representation or b-rep where
 all of the surfaces are represented by NURBS surfaces. The advantage of NURBS surfaces
 is that they can exactly represent conic sections, such as spheres or ellipsoids, and
@@ -67,20 +67,81 @@ list of what has already been done, and what is yet to be done.
 
 - [ ] floating point interval
     - [x] flint arithmetic
-        - [x] tests
     - [ ] flint elementary functions
-- [ ] curves and surfaces
+    - [x] tests
+    - [ ] docs
+- [ ] curves
     - [x] polynomials
+        - [x] evaluation
+        - [x] derivative
+        - [ ] docs
         - [x] tests
-    - [x] b-spline evaluations
+    - [ ] b-spline
+        - [x] evaluations
+        - [x] derivatives
+        - [ ] basis functions
+        - [x] docs
         - [ ] tests
-    - [x] b-spline derivatives
+    - [ ] nurbs curves
+        - [x] evaluation
+        - [x] derivatives
+        - [x] docs
         - [ ] tests
-    - [x] nurbs curve evaluation
+    - [ ] diff geo properties
+        - [ ] arc length
+        - [ ] tangent vec
+        - [ ] curvature
+        - [x] docs
+        - [ ] test
+    - [ ] algorithms
+        - [ ] midpoint
+        - [ ] plane intersection
+        - [ ] nearest point
+        - [ ] docs
         - [ ] tests
-    - [x] nurbs curve derivatives
+- [ ] surface
+    - [ ] nurbs surface 
+        - [ ] evaluation
+        - [ ] gradient and jacobian
+        - [ ] docs
         - [ ] tests
-    - [ ] space curve arc length
-    - [ ] space curve diff geo properties
-    - [ ] nurbs surface evaluation
-    - [ ] surface diff geo properties
+    - [ ] diff geo properties
+        - [ ] tangent plane
+        - [ ] principle curvatures
+        - [ ] docs
+        - [ ] tests
+    - [ ] algorithms
+        - [ ] line intersection
+        - [ ] nearest point
+        - [ ] curve intersection
+        - [ ] surface-surface intersection
+        - [ ] docs
+        - [ ] tests
+- [ ] b-rep
+    - [ ] implementation
+        - [ ] faces
+            - [ ] surface
+            - [ ] edge-loop
+        - [ ] edges
+    - [ ] mesh generation
+    - [ ] docs
+    - [ ] tests
+- [ ] CSG
+    - [ ] transformations
+        - [ ] translation
+        - [ ] rotation
+        - [ ] scale
+        - [ ] singular value decomposition
+    - [ ] primitives
+        - [ ] box
+        - [ ] sphere
+        - [ ] cylinder
+        - [ ] cone
+        - [ ] extrusion
+        - [ ] solid of rotation
+    - [ ] operations
+        - [ ] union
+        - [ ] difference
+        - [ ] intersection
+    - [ ] docs
+    - [ ] tests

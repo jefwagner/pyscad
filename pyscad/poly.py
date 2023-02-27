@@ -27,14 +27,17 @@ class Poly:
 
     def d(self, x: float, n : int = 1) -> float:
         """Evaluate the n^th derivative of the polynomial"""
-        fv = np.zeros((n+1,), dtype=np.float64)
+        x = np.array(x)
+        shape = list(x.shape) + [n+1]
+        fv = np.zeros(shape, dtype=np.float64)
+        # fv = np.zeros((n+1,), dtype=np.float64)
+        fv.T[0] = self.coef[-1]
         nv = np.array(range(n+1))
-        fv[0] = self.coef[-1]
         for c in self.coef[-2::-1]:
             adder = nv * np.roll(fv,1)
-            adder[0] = c
-            fv = x*fv + adder
-        return fv[-1]
+            adder.T[0] = c
+            fv = (x*fv.T + adder.T).T
+        return fv.T[-1]
 
     def __neg__(self) -> 'Poly':
         """Negate a polynomial"""

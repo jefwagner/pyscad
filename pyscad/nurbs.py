@@ -1,9 +1,10 @@
-from typing import Union, Sequence, Iterator, List
+from typing import Union, Sequence, Iterator, List, Callable
 
 import numpy as np
 import numpy.typing as npt
 
 from .flint import flint
+from .poly import Poly
 
 # Number is a float or floating-point interval
 _Num = Union[float, flint]
@@ -155,16 +156,16 @@ class SpaceCurve:
 class BSpline(SpaceCurve):
     """Normalized Basis Splines"""
 
-    def __init__(self, p: int, c: Sequence[CPoint], t: Sequence[float]):
+    def __init__(self, c: Sequence[CPoint], p: int, t: Sequence[float]):
         """Create a new b-spline object
-        @param p Degree of the b-spline basis functions
         @param c The control points
+        @param p Degree of the b-spline basis functions
         @param t the knot-vector
         """
         if len(t) != len(c) + p + 1:
             raise ValueError('Knot vector wrong length')
-        self.p = p
         self.c = v_flint(np.array(c))
+        self.p = p
         self.t = KnotVector(t)
     
     def __call__(self, x: float) -> CPoint:
@@ -193,24 +194,27 @@ binom = np.array([
     [1,4,6,4,1],
 ])
 
-class Nurbs:
+class NurbsCurve(SpaceCurve):
     """Non-uniform Rational Basis Splines"""
 
-    def __init__(self, p: int, c: Sequence[CPoint], w: Sequence[float], t: Sequence[float]):
-        """Create a new b-spline object
-        @param p Degree of the b-spline basis functions
+    def __init__(self, 
+                 c: Sequence[CPoint], 
+                 w: Sequence[float], 
+                 p: int, 
+                 t: Sequence[float]):
+        """Create a new NURBS curve object
         @param c The control points
         @param w The weights
+        @param p Degree of the b-spline basis functions
         @param t the knot-vector
         """
         if len(c) != len(w):
             raise ValueError('The control points and weights must have the same length')
         if len(t) != len(c) + p + 1:
             raise ValueError('Knot vector wrong length')
-        self.p = p
         self.c = v_flint(c)
         self.w = np.array(w, dtype=np.float64)
-        # self.w = v_flint(w)
+        self.p = p
         self.t = KnotVector(t)
     
     def __call__(self, x: float) -> CPoint:
@@ -257,3 +261,52 @@ class Nurbs:
         """
         return self.d_list(x, n)[-1]
         
+
+class NurbsSurface:
+
+    def __init__(self,
+                 c: Sequence[Sequence[flint]],
+                 w: Sequence[Sequence[float]],
+                 pu: int,
+                 pv: int,
+                 tu: Sequence[float],
+                 tv: Sequence[float]):
+        """Create a new NURBS surface object
+        @param c The control points
+        @param w The weights
+        @param pu Degree of the u direction b-spline basis functions
+        @param tu the u direction knot-vector
+        @param pv Degree of the v direction b-spline basis functions
+        @param tv the v direction knot-vector
+        """
+        self.c = v_flint(c)
+        self.w = np.array(w, dtype=np.float64)
+        if self.c.shape[:2] != self.w.shape:
+            raise ValueError('The control points and weights must have the same shape')
+        if len(tv) != len(c) + pv + 1:
+            raise ValueError('u-direction knot vector wrong length')
+        if len(tu) != len(c[0]) + pu + 1:
+            raise ValueError('u-direction knot vector wrong length')
+        self.pu = pu
+        self.tu = KnotVector(tu)
+        self.pv = pv
+        self.tv = KnotVector(tv)
+
+    def __call__(self, u: float, v: float) -> CPoint:
+        """Evaluate the surface at a parametric point (u,v)
+        @param u the u parameter
+        @param v the v parameter
+        @return The position of the surface at the parametric point (u,v)
+        """
+        wc = np.empty_like(self.c)
+        for i in range(len(wc)):
+            for j in range(len(wc[0])):
+                wc[i,j] = self.w[i,j]*self.c[i,j]
+        wcj = np.empty_like(wc[:,0])
+        wj = np.empty_like(self.w[:,0])
+        for i in range(len(wc)):
+            wcj[i] = self.tu.deboor(self.pu, wc[i], u)
+            wj[i] = self.tu.deboor(self.pu, self.w[i], u)
+        c = self.tv.deboor(self.pv, wcj, v)
+        w = self.tv.deboor(self.pv, wj, v)
+        return c/w
