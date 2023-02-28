@@ -95,9 +95,11 @@ class KnotVector:
         of the knot vector it is evaluated using the b-spline basis polynomial for the
         first or last non-zero interval in the knot-vector.
         """
+        # return self.v_deboor(p, c, x)
         res = self.v_deboor(p, c, x)
         if isinstance(res, np.ndarray):
-            if not isinstance(res, (flint, float)):
+            # # if not isinstance(res, (flint, float)):
+            if len(res.shape) > 0 and isinstance(res[0], np.ndarray):
                 return np.vstack(res)
         return res
 
@@ -222,12 +224,10 @@ class NurbsCurve(SpaceCurve):
         @param x Parametric value
         @return Point along the spline
         """
-        wc = np.empty_like(self.c)
-        for i in range(len(wc)):
-            wc[i] = self.w[i]*self.c[i]
+        wc = (self.c.T*self.w).T
         c = self.t.deboor(self.p, wc, x)
         w = self.t.deboor(self.p, self.w, x)
-        return c/w
+        return (c.T/w).T
 
     def d_list(self, x: float, n: int = 1) -> List[CPoint]:
         """Evaluate the value and derivatives of the Nurbs curvs
@@ -235,13 +235,11 @@ class NurbsCurve(SpaceCurve):
         @param n The order of the derivative
         """
         c, w, s = [], [], []
-        wc = np.empty_like(self.c)
-        for i in range(len(wc)):
-            wc[i] = self.w[i]*self.c[i] if self.w[i] != 0 else self.c[i]
+        wc = (c.T*w).T
         _w = self.w.copy()
         c.append(self.t.deboor(self.p, wc, x))
         w.append(self.t.deboor(self.p, _w, x))
-        s.append(c[0]/w[0])
+        s.append((c[0].T/w[0]).T)
         for i in range(n):
             wc = self.t.d_points(self.p-i, wc, 1)
             _w = self.t.d_points(self.p-i, _w, 1)
@@ -250,8 +248,8 @@ class NurbsCurve(SpaceCurve):
             # calc the next derivative
             res = c[-1]
             for k in range(1,i+2):
-                res -= binom[i+1,k]*s[i+1-k]*w[k]
-            s.append(res/w[0])
+                res -= binom[i+1,k]*((s[i+1-k].T*w[k]).T)
+            s.append((res.T/w[0]).T)
         return s
 
     def d(self, x: float, n: int = 1) -> CPoint:
@@ -268,8 +266,8 @@ class NurbsSurface:
                  c: Sequence[Sequence[flint]],
                  w: Sequence[Sequence[float]],
                  pu: int,
-                 pv: int,
                  tu: Sequence[float],
+                 pv: int,
                  tv: Sequence[float]):
         """Create a new NURBS surface object
         @param c The control points
@@ -283,10 +281,10 @@ class NurbsSurface:
         self.w = np.array(w, dtype=np.float64)
         if self.c.shape[:2] != self.w.shape:
             raise ValueError('The control points and weights must have the same shape')
-        if len(tv) != len(c) + pv + 1:
-            raise ValueError('u-direction knot vector wrong length')
         if len(tu) != len(c[0]) + pu + 1:
             raise ValueError('u-direction knot vector wrong length')
+        if len(tv) != len(c) + pv + 1:
+            raise ValueError('v-direction knot vector wrong length')
         self.pu = pu
         self.tu = KnotVector(tu)
         self.pv = pv
@@ -305,8 +303,8 @@ class NurbsSurface:
         wcj = np.empty_like(wc[:,0])
         wj = np.empty_like(self.w[:,0])
         for i in range(len(wc)):
-            wcj[i] = self.tu.deboor(self.pu, wc[i], u)
-            wj[i] = self.tu.deboor(self.pu, self.w[i], u)
-        c = self.tv.deboor(self.pv, wcj, v)
-        w = self.tv.deboor(self.pv, wj, v)
-        return c/w
+            wcj[i] = self.tu.deboor(self.pv, wc[i], v)
+            wj[i] = self.tu.deboor(self.pv, self.w[i], v)
+        c = self.tv.deboor(self.pu, wcj, u)
+        w = self.tv.deboor(self.pu, wj, u)
+        return (c.T/w).T
