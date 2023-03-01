@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 
 from .flint import flint
-from .poly import Poly
 
 # Number is a float or floating-point interval
 _Num = Union[float, flint]
@@ -43,8 +42,8 @@ class KnotVector:
             if tt != t[-1]:
                 break
             self.kmax -= 1
-        # Vectorize the de-Boor's algorithm method
-        self.v_deboor = np.vectorize(self.s_deboor, excluded=[0,1])
+        # # Vectorize the de-Boor's algorithm method
+        # self.v_deboor = np.vectorize(self.s_deboor, excluded=[0,1])
   
     def __len__(self) -> int:
         """Length of the knot vector"""
@@ -68,10 +67,10 @@ class KnotVector:
         k = np.searchsorted(self.t, x)-1
         return np.clip(k, self.kmin, self.kmax)
 
-    def s_deboor(self, p: int, c: Sequence[CPoint], x: float) -> CPoint:
+    def deboor(self,c: Sequence[CPoint], p: int,  x: float) -> CPoint:
         """Evaluate a b-spline on the knot-vector at a parametric
-        @param p The degree of the b-spline 
         @param c The sequence of control points
+        @param p The degree of the b-spline 
         @param x The value of parametric argument to the b-spline
         @return The D-dimensional point on the b-spline. Note: if x is outside the range
         of the knot vector it is evaluated using the b-spline basis polynomial for the
@@ -86,27 +85,27 @@ class KnotVector:
                 q[j] = a*q[j] + (1-a)*q[j-1]
         return q[p]
 
-    def deboor(self, p: int, c: Sequence[CPoint], x: float) -> CPoint:
-        """Evaluate a b-spline on the knot-vector at a parametric
-        @param p The degree of the b-spline 
-        @param c The sequence of control points
-        @param x The value of parametric argument to the b-spline
-        @return The D-dimensional point on the b-spline. Note: if x is outside the range
-        of the knot vector it is evaluated using the b-spline basis polynomial for the
-        first or last non-zero interval in the knot-vector.
-        """
-        # return self.v_deboor(p, c, x)
-        res = self.v_deboor(p, c, x)
-        if isinstance(res, np.ndarray):
-            # # if not isinstance(res, (flint, float)):
-            if len(res.shape) > 0 and isinstance(res[0], np.ndarray):
-                return np.vstack(res)
-        return res
+    # def deboor(self, p: int, c: Sequence[CPoint], x: float) -> CPoint:
+    #     """Evaluate a b-spline on the knot-vector at a parametric
+    #     @param p The degree of the b-spline 
+    #     @param c The sequence of control points
+    #     @param x The value of parametric argument to the b-spline
+    #     @return The D-dimensional point on the b-spline. Note: if x is outside the range
+    #     of the knot vector it is evaluated using the b-spline basis polynomial for the
+    #     first or last non-zero interval in the knot-vector.
+    #     """
+    #     # return self.v_deboor(p, c, x)
+    #     res = self.v_deboor(p, c, x)
+    #     if isinstance(res, np.ndarray):
+    #         # # if not isinstance(res, (flint, float)):
+    #         if len(res.shape) > 0 and isinstance(res[0], np.ndarray):
+    #             return np.vstack(res)
+    #     return res
 
-    def d_points(self, p:int, c: Sequence[CPoint], n: int) -> npt.NDArray[CPoint]:
+    def d_points(self, c: Sequence[CPoint], p:int, n: int) -> npt.NDArray[CPoint]:
         """Create the new control points for the derivative b-spline
-        @param p The degree of the b-spline 
         @param c The sequence of control points
+        @param p The degree of the b-spline 
         @param n The order of the derivative
         @return The set of control points for a p-n degree b-spline that is the
         derivative of the p degree b-spline represented by the original control points
@@ -130,6 +129,12 @@ class SpaceCurve:
     vectorized derivative function `d(x,n)` that gives the `n`^th derivative with
     respect to the parametric parameter at the parametric point `x`.
     """
+
+    def __call__(self, x: float) -> CPoint:
+        raise NotImplementedError('Virtual method, must redefine')
+
+    def d(self, x: float, n: int) -> CPoint:
+        raise NotImplementedError('Virtual method, must redefine')
 
     def arc_len(self, a: float, b: float) -> float:
         """Find the arc length along the curve
@@ -233,6 +238,7 @@ class NurbsCurve(SpaceCurve):
         """Evaluate the value and derivatives of the Nurbs curvs
         @param x Parametric value
         @param n The order of the derivative
+        @return A list of the value and higher order derivatives of the spline curve
         """
         c, w, s = [], [], []
         wc = (c.T*w).T
@@ -256,55 +262,8 @@ class NurbsCurve(SpaceCurve):
         """Evaluate the derivative of the b-spline with respect
         @param x Parametric value
         @param n The order of the derivative
+        @return The n^th derivative at the point x along the spline
         """
         return self.d_list(x, n)[-1]
         
 
-class NurbsSurface:
-
-    def __init__(self,
-                 c: Sequence[Sequence[flint]],
-                 w: Sequence[Sequence[float]],
-                 pu: int,
-                 tu: Sequence[float],
-                 pv: int,
-                 tv: Sequence[float]):
-        """Create a new NURBS surface object
-        @param c The control points
-        @param w The weights
-        @param pu Degree of the u direction b-spline basis functions
-        @param tu the u direction knot-vector
-        @param pv Degree of the v direction b-spline basis functions
-        @param tv the v direction knot-vector
-        """
-        self.c = v_flint(c)
-        self.w = np.array(w, dtype=np.float64)
-        if self.c.shape[:2] != self.w.shape:
-            raise ValueError('The control points and weights must have the same shape')
-        if len(tu) != len(c[0]) + pu + 1:
-            raise ValueError('u-direction knot vector wrong length')
-        if len(tv) != len(c) + pv + 1:
-            raise ValueError('v-direction knot vector wrong length')
-        self.pu = pu
-        self.tu = KnotVector(tu)
-        self.pv = pv
-        self.tv = KnotVector(tv)
-
-    def __call__(self, u: float, v: float) -> CPoint:
-        """Evaluate the surface at a parametric point (u,v)
-        @param u the u parameter
-        @param v the v parameter
-        @return The position of the surface at the parametric point (u,v)
-        """
-        wc = np.empty_like(self.c)
-        for i in range(len(wc)):
-            for j in range(len(wc[0])):
-                wc[i,j] = self.w[i,j]*self.c[i,j]
-        wcj = np.empty_like(wc[:,0])
-        wj = np.empty_like(self.w[:,0])
-        for i in range(len(wc)):
-            wcj[i] = self.tu.deboor(self.pv, wc[i], v)
-            wj[i] = self.tu.deboor(self.pv, self.w[i], v)
-        c = self.tv.deboor(self.pu, wcj, u)
-        w = self.tv.deboor(self.pu, wj, u)
-        return (c.T/w).T

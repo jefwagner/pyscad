@@ -65,21 +65,22 @@ normal data, and the .stl will only have triangles.
 There is a lot to do before this project is ready for use for anything. Below is a to-do
 list of what has already been done, and what is yet to be done.
 
+Note: I've removed some of the vectorized stuff from the evaluations because I think I
+did it wrong before. I'm going to try to vectorize by hand and see where I get.
+Ultimately I want to write an custom extension for numpy to support a rounded floating
+point interval d-type. I have not found any good references yet, but I did find a good
+example [in the quaternion project](https://github.com/martinling/numpy_quaternion)
+
 - [ ] floating point interval
     - [x] flint arithmetic
     - [ ] flint elementary functions
     - [x] tests
     - [ ] docs
-- [ ] curves
-    - [x] polynomials
-        - [x] evaluation
-        - [x] derivative
-        - [ ] docs
-        - [x] tests
+- [ ] curves :
     - [ ] b-spline
         - [x] evaluations
         - [x] derivatives
-        - [ ] basis functions
+        - [ ] basis functions : I think I'm remove this
         - [x] docs
         - [ ] tests
     - [ ] nurbs curves

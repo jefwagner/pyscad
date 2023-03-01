@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from ..nurbs import *
+from ..curves import *
 
 class TestKnotVector(unittest.TestCase):
 
