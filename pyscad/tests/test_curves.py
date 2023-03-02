@@ -95,14 +95,32 @@ class TestKnotVector(unittest.TestCase):
             basis_func = self.simple_basis(t)
             self.assertAlmostEqual(basis_spline, basis_func)
 
-    def test_d_points(self):
+    def test_d_cpts(self):
         """Validate the derivative control points for a simple case"""
         p = 2
         c = [1.0]
         tv = KnotVector([0,1,2,3])
-        d = tv.d_points(c, p, 1)
+        d = tv.d_cpts(c, p)
+        self.assertEqual(len(d), 2)
         self.assertAlmostEqual(d[0], 1.0)
         self.assertAlmostEqual(d[1], -1.0)
+
+    def test_d_cpts_list(self):
+        """Validate the list of derivative control points for a simple case"""
+        p = 2
+        c = [1.0]
+        tv = KnotVector([0,1,2,3])
+        pts_list = tv.d_cpts_list(c, p, 2)
+        self.assertEqual(len(pts_list), 3)
+        for i, c in enumerate(pts_list):
+            self.assertEqual(len(c), i+1)
+        d0, d1, d2 = pts_list
+        self.assertAlmostEqual(d0[0], c[0])
+        self.assertAlmostEqual(d1[0], 1.0)
+        self.assertAlmostEqual(d1[1], -1.0)
+        self.assertAlmostEqual(d2[0], 1.0)
+        self.assertAlmostEqual(d2[1], -2.0)
+        self.assertAlmostEqual(d2[2], 1.0)
 
 
 class TestBSpline(unittest.TestCase):

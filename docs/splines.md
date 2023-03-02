@@ -105,27 +105,28 @@ $$
 
 Example $p=2$, $P=[1]$, $t=[0,1,2,3]$
 $$
-S(t) = P_0 N_{0,2}(t)
+S(t) = (Q^{(0)}_0 = 1) N_{0,2}(t)
 $$
 $$
-S(t) = P_0 \bigg(
-    \frac{t-t_0}{t_2-t_0} N_{0,1}(t) +
-    \frac{t_3-t}{t_3-t_1} N_{1,1}(t)
-\bigg)
-$$
-$$
-S(t) = P_0 \bigg(
-    \frac{t-t_0}{t_2-t_0} 
+S(t) = \bigg(
+    Q^{(1)}_0 = \frac{t}{2} Q^{(0)}_0 + 
+    \frac{2-t}{2} Q^{(0)}_{-1}  
+    \bigg) N_{0,1}(t) + \\
     \bigg(
-        \frac{t-t_0}{t_1-t_0} N_{0,0}(t) +
-        \frac{t_2-t}{t_2-t_1} N_{1,0}(t)
-    \bigg) \\+
-    \frac{t_3-t}{t_3-t_1} 
-    \bigg(
-        \frac{t-t_1}{t_2-t_1} N_{1,0}(t)
-        \frac{t_3-t}{t_3-t_2} N_{2,0}(t)
-    \bigg)
-\bigg)
+    Q^{(1)}_1 = \frac{t-1}{2} Q^{(0)}_1 +
+     \frac{3-t}{2} Q^{(0)}_0
+    \bigg) N_{1,1}(t)
+$$
+$$
+S(t) = \Big(
+    Q^{(2)}_0 = t \, Q^{(1)}_0 + (1-t) Q^{(1)}_{-1}
+\Big) N_{0,0}(t) + \\
+\Big(
+    Q^{(2)}_1 = (t-1) Q^{(1)}_1 + (2-t) Q^{(1)}_0
+\Big) N_{1,0}(t) + \\
+\Big(
+    Q^{(2)}_2 = (t-2) Q^{(1)}_2 + (3-t) Q^{(1)}_1
+\Big) N_{2,0}(t)
 $$
 $$
 S(t) = \bigg(
@@ -142,18 +143,18 @@ S(t) = \bigg(
 \bigg)
 $$
 $$
+S(t) =
+    \frac{t^2}{2} N_{0,0}(t) + \\
+    \frac{t(2-t) + (3-t)(t-1)}{2} N_{1,0}(t) + \\
+    \frac{(3-t)^2}{2} N_{2,0}(t)
+$$
+$$
 S(t) =\begin{cases}
     t^2/2 & \text{for}\quad 0 \le t < 1 \\
     \big(t(2-t) + (3-t)(t-1)\big)/2 \quad & 
     \text{for}\quad 1 \le t < 2 \\
     \big((3-t)^2\big)/2 & \text{for}\quad 2 \le t < 3
     \end{cases}
-$$
-$$
-S(t) =
-    \frac{t^2}{2} N_{0,0}(t) +
-    \frac{t(2-t) + (3-t)(t-1)}{2} N_{1,0}(t) +
-    \frac{(3-t)^2}{2} N_{2,0}(t)
 $$
 
 To implement de Boor's algorithm, we need two helper functions. First we need to find the index of the interval in the knot-index where the x value falls. Here is a naive implementation in python that uses a linear search:

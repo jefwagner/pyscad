@@ -85,42 +85,36 @@ class KnotVector:
                 q[j] = a*q[j] + (1-a)*q[j-1]
         return q[p]
 
-    # def deboor(self, p: int, c: Sequence[CPoint], x: float) -> CPoint:
-    #     """Evaluate a b-spline on the knot-vector at a parametric
-    #     @param p The degree of the b-spline 
-    #     @param c The sequence of control points
-    #     @param x The value of parametric argument to the b-spline
-    #     @return The D-dimensional point on the b-spline. Note: if x is outside the range
-    #     of the knot vector it is evaluated using the b-spline basis polynomial for the
-    #     first or last non-zero interval in the knot-vector.
-    #     """
-    #     # return self.v_deboor(p, c, x)
-    #     res = self.v_deboor(p, c, x)
-    #     if isinstance(res, np.ndarray):
-    #         # # if not isinstance(res, (flint, float)):
-    #         if len(res.shape) > 0 and isinstance(res[0], np.ndarray):
-    #             return np.vstack(res)
-    #     return res
-
-    def d_points(self, c: Sequence[CPoint], p:int, n: int) -> npt.NDArray[CPoint]:
-        """Create the new control points for the derivative b-spline
+    def d_cpts(self, c: Sequence[CPoint], p: int) -> npt.NDArray[CPoint]:
+        """Create the new control points for the first derivative b-spline
         @param c The sequence of control points
         @param p The degree of the b-spline 
-        @param n The order of the derivative
-        @return The set of control points for a p-n degree b-spline that is the
+        @return The set of control points for a p-1 degree b-spline that is the
         derivative of the p degree b-spline represented by the original control points
         """
         _c = np.array(c)
-        r = np.append(_c, [0*_c[0]]*n, axis=0) 
-        for k in range(n):
-            for i in range(len(r)-n+k,-1,-1):
-                dt = self.t[i+p-k]-self.t[i]
-                r_im1 = r[i-1] if i-1 != -1 else 0*r[0]
-                if dt != 0:
-                    r[i] = (p-k)*(r[i]-r_im1)/dt
-                else:
-                    r[i] = 0*r[i]
+        r = np.append(_c, [0*_c[0]], axis=0) 
+        for i in range(len(r)-1,-1,-1):
+            dt = self.t[i+p]-self.t[i]
+            r_im1 = r[i-1] if i-1 != -1 else 0*r[0]
+            if dt != 0:
+                r[i] = (p)*(r[i]-r_im1)/dt
+            else:
+                r[i] = 0*r[i]
         return r
+
+    def d_cpts_list(self, c: Sequence[CPoint], p: int, n: int) -> List[npt.NDArray[CPoint]]:
+        """
+        @param c The sequence of control points 
+        @param p The degree of the b-spline
+        @param n The order of the derivative
+        @return A list of numpy ndarrays of control points that define the
+        original control points and all the  
+        """
+        pts_list = [np.array(c)]
+        for i in range(n):
+            pts_list.append(self.d_cpts(pts_list[-1], p-i))
+        return pts_list
 
 
 class SpaceCurve:
