@@ -103,6 +103,59 @@ Q^{(r+1)}_i = \alpha \, Q^{(r)}_i + (1-\alpha) \, Q^{(r)}_{i-1}
 \alpha = \frac{t-t_i}{t_{i+p-r}-t_i}.
 $$
 
+Example $p=2$, $P=[1]$, $t=[0,1,2,3]$
+$$
+S(t) = P_0 N_{0,2}(t)
+$$
+$$
+S(t) = P_0 \bigg(
+    \frac{t-t_0}{t_2-t_0} N_{0,1}(t) +
+    \frac{t_3-t}{t_3-t_1} N_{1,1}(t)
+\bigg)
+$$
+$$
+S(t) = P_0 \bigg(
+    \frac{t-t_0}{t_2-t_0} 
+    \bigg(
+        \frac{t-t_0}{t_1-t_0} N_{0,0}(t) +
+        \frac{t_2-t}{t_2-t_1} N_{1,0}(t)
+    \bigg) \\+
+    \frac{t_3-t}{t_3-t_1} 
+    \bigg(
+        \frac{t-t_1}{t_2-t_1} N_{1,0}(t)
+        \frac{t_3-t}{t_3-t_2} N_{2,0}(t)
+    \bigg)
+\bigg)
+$$
+$$
+S(t) = \bigg(
+    \frac{t}{2} 
+    \big(
+        t \, N_{0,0}(t) +
+        (2-t) N_{1,0}(t)
+    \big) \\+
+    \frac{3-t}{2} 
+    \big(
+        (t-1) N_{1,0}(t)
+        (3-t) N_{2,0}(t)
+    \big)
+\bigg)
+$$
+$$
+S(t) =\begin{cases}
+    t^2/2 & \text{for}\quad 0 \le t < 1 \\
+    \big(t(2-t) + (3-t)(t-1)\big)/2 \quad & 
+    \text{for}\quad 1 \le t < 2 \\
+    \big((3-t)^2\big)/2 & \text{for}\quad 2 \le t < 3
+    \end{cases}
+$$
+$$
+S(t) =
+    \frac{t^2}{2} N_{0,0}(t) +
+    \frac{t(2-t) + (3-t)(t-1)}{2} N_{1,0}(t) +
+    \frac{(3-t)^2}{2} N_{2,0}(t)
+$$
+
 To implement de Boor's algorithm, we need two helper functions. First we need to find the index of the interval in the knot-index where the x value falls. Here is a naive implementation in python that uses a linear search:
 ```python
 def knot_idx(x: float, t: Sequence[float]):

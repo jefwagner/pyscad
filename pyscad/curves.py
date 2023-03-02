@@ -80,7 +80,7 @@ class KnotVector:
         q = np.array([q0(c, k-r) for r in range(p,-1,-1)])
         for r in range(p):
             for j in range(p,r,-1):
-                l, m = j+k-p, j+k-r
+                l, m = np.clip((j+k-p, j+k-r),0,len(self.t)-1)
                 a = (x-self.t[l])/(self.t[m]-self.t[l])
                 q[j] = a*q[j] + (1-a)*q[j-1]
         return q[p]
@@ -115,8 +115,9 @@ class KnotVector:
         for k in range(n):
             for i in range(len(r)-n+k,-1,-1):
                 dt = self.t[i+p-k]-self.t[i]
+                r_im1 = r[i-1] if i-1 != -1 else 0*r[0]
                 if dt != 0:
-                    r[i] = (p-k)*(r[i]-r[i-1])/dt
+                    r[i] = (p-k)*(r[i]-r_im1)/dt
                 else:
                     r[i] = 0*r[i]
         return r
