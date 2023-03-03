@@ -122,6 +122,78 @@ class TestKnotVector(unittest.TestCase):
         self.assertAlmostEqual(d2[1], -2.0)
         self.assertAlmostEqual(d2[2], 1.0)
 
+class MissingMethods(SpaceCurve):
+    """Only hear to validate errors"""
+    pass
+
+class Parabola(SpaceCurve):
+    """Give a parabola in 2-D"""
+
+    def __call__(self, x):
+        """Evalute the parabola"""
+        x = v_flint(x)
+        y = x*x
+        return np.array([x,y]).T        
+
+    def d(self, x, n):
+        """Evaluate the nth order derivatives of the parabola"""
+        if n == 1:
+            y = 2*v_flint(x)
+            x = np.ones_like(y)
+            return np.array([x,y]).T
+        elif n == 2:
+            _x = v_flint(x)
+            x = np.zeros_like(_x)
+            y = 2*np.ones_like(_x)
+            return np.array([x,y]).T
+        else:
+            _x = v_flint(x)
+            x = np.zeros_like(_x)
+            y = np.zeros_like(_x)
+            return np.array([x,y]).T
+
+
+class TestSpaceCurve(unittest.TestCase):
+    """Test the generic space-curve functions"""
+
+    def test_error(self):
+        """Validate that if methods aren't """
+        mm = MissingMethods()
+        with self.assertRaises(NotImplementedError):
+            mm(1.0)
+        with self.assertRaises(NotImplementedError):
+            mm.d(1.0, 1)
+        with self.assertRaises(NotImplementedError):
+            mm.d_list(1.0, 2)
+        with self.assertRaises(NotImplementedError):
+            mm.arclen(0,1)
+
+    def test_d_list(self):
+        p = Parabola()
+        d, t, n = p.d_list(0.5, 2)
+        self.assertEqual(len(d), 2)
+        self.assertEqual(d[0], 0.5)
+        self.assertEqual(d[1], 0.25)
+        self.assertEqual(len(t), 2)
+        self.assertEqual(t[0], 1)
+        self.assertEqual(t[1], 1)
+        self.assertEqual(len(n), 2)
+        self.assertEqual(n[0], 0)
+        self.assertEqual(n[1], 2)
+
+    def test_arclen(self):
+        p = Parabola()
+        al = p.arclen(0,1)
+        target = 0.5*np.sqrt(5) + 0.25*np.log(2+np.sqrt(5))
+        self.assertAlmostEqual(al, target)
+
+    def test_tanget(self):
+        p = Parabola()
+        t = p.tangent(0.5)
+        self.assertEqual(len(t), 2)
+        self.assertEqual(t[0], 1/np.sqrt(2))
+        self.assertEqual(t[1], 1/np.sqrt(2))
+
 
 class TestBSpline(unittest.TestCase):
 

@@ -2,6 +2,7 @@ from typing import Union, Sequence, Iterator, List, Callable
 
 import numpy as np
 import numpy.typing as npt
+import scipy.integrate as integrate
 
 from .flint import flint
 
@@ -131,28 +132,56 @@ class SpaceCurve:
     def d(self, x: float, n: int) -> CPoint:
         raise NotImplementedError('Virtual method, must redefine')
 
-    def arc_len(self, a: float, b: float) -> float:
+    def d_list(self, x: float, n: int) -> List[CPoint]:
+        """Return the value and first n derivatives of the curve
+        @param x The parametric value
+        @param n The highest order of the derivative
+        @return a list containg the value of the curve and its first n derivativs at the 
+        parametric point x
+        """
+        dl = [self.__call__(x)]
+        for i in range(n):
+            dl.append(self.d(x,i+1))
+        return dl
+
+    def arclen(self, a: float, b: float) -> float:
         """Find the arc length along the curve
         @param a The starting parametric value
         @param b The ending parametric value
         @return The arc length of the curve between a and b
+        Note: this cast all flint intervals into floats before doing the integration so
+        the result is only approximate. This should not matter, since the arc length is
+        evaluated using a numerical approximation anyway.
         """
-        raise NotImplementedError('Need to define a norm for CPoints made of flint objects')
-        raise NotImplementedError('Need to define an numerical integration scheme that works with flint objects')
+        res = integrate.quad(
+            lambda t: np.sqrt(
+                np.sum(
+                    (self.d(t,1).astype(float))**2, 
+                    axis=-1
+                )
+            ),a,b)
+        return res[0]
 
     def tangent(self, x: float) -> CPoint:
         """Find the tangent vector along the curve
         @param x The parametric point
         @return The tangent vector
         """
-        return NotImplementedError('Need to define norm for CPoints made of flint objects')
+        t = self.d(x, 1)
+        tsqr = np.sum(t*t, axis=-1)
+        tmag = tsqr.sqrt()
+        return (t.T/tmag**3).T
 
     def curvature(self, x: float) -> CPoint:
         """Find the curvature along the curve
         @param x The parametric point
         @return The curvature
         """
-        return NotImplementedError('Need to define norm for CPoints made of flint objects')
+        _, t, n = self.d_list(x, 2)
+        c = numpy.cross(t,n)
+        cmag = flint.sqrt(sum(c*c))
+        tmag = flint.sqrt(sum(t*t))
+        return cmag/tmag
 
 
 class BSpline(SpaceCurve):

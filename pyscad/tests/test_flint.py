@@ -379,3 +379,32 @@ class TestUnary(unittest.TestCase):
         x = abs(x)
         self.assertTrue(flint.identical(x, t))
 
+    def test_sqrt(self):
+        x = flint(1)
+        x.a = 1.0
+        x.v = 4.0
+        x.b = 9.0
+        y = x.sqrt()
+        self.assertEqual(y.a, np.nextafter(1.0, -np.inf))
+        self.assertEqual(y.v, 2.0)
+        self.assertEqual(y.b, np.nextafter(3.0, np.inf))
+        x = flint(1)
+        x.a = -1.0
+        x.v = 1.0
+        x.b = 4.0
+        y = x.sqrt()
+        self.assertEqual(y.a, 0.0)
+        self.assertEqual(y.v, 1.0)
+        self.assertEqual(y.b, np.nextafter(2.0, np.inf))
+        x = flint(1)
+        x.a = -1.0
+        x.v = -1.0
+        x.b = 1.0
+        y = x.sqrt()
+        self.assertEqual(y.a, 0.0)
+        self.assertEqual(y.v, 0.0)
+        self.assertEqual(y.b, np.nextafter(1.0, np.inf))
+        x = flint(-1)
+        with self.assertRaises(ValueError):
+            x.sqrt()
+    

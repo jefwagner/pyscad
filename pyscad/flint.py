@@ -29,7 +29,7 @@ class flint:
 
     def __repr__(self) -> str:
         '''Build a string representation of the interval'''
-        return f'{self.v:f}'
+        return f'{self.v}'
 
     @staticmethod
     def identical(first: 'flint', second: 'flint') -> bool:
@@ -191,4 +191,11 @@ class flint:
             result.v = self.v
         return result
 
- 
+    def sqrt(self) -> 'flint':
+        result = flint(0)
+        if self.b < 0.0:
+            raise ValueError('math domain error')
+        result.a = 0.0 if self.a < 0 else np.nextafter(np.sqrt(self.a), -np.inf)
+        result.v = 0.0 if self.v < 0 else np.sqrt(self.v)
+        result.b = np.nextafter(np.sqrt(self.b), np.inf)
+        return result
