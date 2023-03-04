@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from ..flint import flint
+from ..flint import flint, v_flint, cp_mag, cp_unit
 
 class TestInit(unittest.TestCase):
     """Test for the initialization and internal structure of the flint objects"""
@@ -447,4 +447,136 @@ class TestUnary(unittest.TestCase):
         x = flint(-1)
         with self.assertRaises(ValueError):
             x.sqrt()
+
+
+class TestCPoint(unittest.TestCase):
+    """Test for CPoints and numpy arrays of flints"""
+
+    def test_v_flint_0d(self):
+        a = v_flint(1)
+        self.assertNotIsInstance(a, np.ndarray)
+        self.assertIsInstance(a, flint)
+        self.assertTrue(flint.identical(a, flint(1)))
+
+    def test_v_flint_1d(self):
+        """Validate v_flint for 1-d sequences"""
+        a = v_flint([i for i in range(3)])
+        self.assertIsInstance(a, np.ndarray)
+        self.assertEqual(a.shape, (3,))
+        b = [flint(i) for i in range(3)]
+        for i in range(len(a)):
+            self.assertTrue(flint.identical(a[i], b[i]))
+
+    def test_v_flint_2d(self):
+        """Validate v_flint for 2-d arrays"""
+        a = v_flint([[i+0.5*j for j in range(2)] for i in range(3)])
+        self.assertIsInstance(a, np.ndarray)
+        self.assertEqual(a.shape, (3,2))
+        b = [[flint(i+0.5*j) for j in range(2)] for i in range(3)]
+        for i in range(len(a)):
+            for j in range(len(a[0])):
+                self.assertTrue(flint.identical(a[i,j],b[i][j]))
     
+    def test_cp_mag_float(self):
+        """Validate magnitude for a CPoint of floats"""
+        a = np.array([3.0, 4.0])
+        x = cp_mag(a)
+        self.assertIsInstance(x, float)
+        self.assertAlmostEqual(x, 5.0)
+    
+    def test_cp_mag_flint(self):
+        """Validate magnitude for a CPoint of flints"""
+        a = v_flint([3,4])
+        x = cp_mag(a)
+        self.assertIsInstance(x, flint)
+        self.assertEqual(x, 5.0)
+
+    def test_cp_mag_float_vec(self):
+        """Validate magnitude for a 1-d sequence of CPoints of floats"""
+        a = np.array([[3.0, 4.0], [-6.0, 8.0]])
+        x = cp_mag(a)
+        self.assertIsInstance(x, np.ndarray)
+        self.assertIsInstance(x[0], float)
+        self.assertAlmostEqual(x[0], 5.0)
+        self.assertAlmostEqual(x[1], 10.0)
+
+    def test_cp_mag_flint_vec(self):
+        """Validate magnitude for a 1-d sequence of CPoints of flints"""
+        a = v_flint([[3,4],[-6,8]])
+        x = cp_mag(a)
+        self.assertIsInstance(x, np.ndarray)
+        self.assertIsInstance(x[0], flint)
+        self.assertEqual(x[0], 5.0)
+        self.assertEqual(x[1], 10.0)
+
+    def test_cp_mag_float_array(self):
+        """Validate magnitude for a 2-d array of CPoints of floats"""
+        thi = np.linspace(0,np.pi,3)
+        thj = np.linspace(0,np.pi,4)
+        thij = np.array([[i+j for j in thj] for i in thi])
+        x, y = np.cos(thij), np.sin(thij)
+        a = np.array([x.T,y.T]).T
+        x = cp_mag(a)
+        self.assertIsInstance(x, np.ndarray)
+        self.assertEqual(x.shape, (3,4))
+        self.assertIsInstance(x[0,0], float)
+        for i in range(len(x)):
+            for j in range(len(x[0])):
+                self.assertAlmostEqual(x[i,j], 1.0)
+
+    def test_cp_mag_flint_array(self):
+        """Validate magnitude for a 2-d array of CPoints of flints"""
+        thi = np.linspace(0,np.pi,3)
+        thj = np.linspace(0,np.pi,4)
+        thij = np.array([[i+j for j in thj] for i in thi])
+        x, y = np.cos(thij), np.sin(thij)
+        a = v_flint(np.array([x.T,y.T]).T)
+        for i in range(len(a)):
+            for j in range(len(a[0])):
+                for k in range(len(a[0,0])):
+                    a[i,j,k]._grow()
+        x = cp_mag(a)
+        self.assertIsInstance(x, np.ndarray)
+        self.assertEqual(x.shape, (3,4))
+        self.assertIsInstance(x[0,0], flint)
+        for i in range(len(x)):
+            for j in range(len(x[0])):
+                self.assertEqual(x[i,j], 1.0)
+        
+    def test_cp_unit_float(self):
+        """Validate unit vectors for a CPoint of floats"""
+        a = np.array([1.0, 1.0])
+        u = cp_unit(a)
+        self.assertIsInstance(u, np.ndarray)
+        self.assertEqual(a.shape, u.shape)
+        self.assertAlmostEqual(u[0], 1/np.sqrt(2))
+        self.assertAlmostEqual(u[1], 1/np.sqrt(2))
+
+    def test_cp_unit_flint(self):
+        """Validate unit vectors for a CPoint of flints"""
+        a = v_flint([1.0, 1.0])
+        u = cp_unit(a)
+        self.assertIsInstance(u, np.ndarray)
+        self.assertEqual(a.shape, u.shape)
+        self.assertEqual(u[0], 1/np.sqrt(2))
+        self.assertEqual(u[1], 1/np.sqrt(2))
+
+    def test_cp_unit_float_array(self):
+        """Validate unit vectors for a 2-D array of float CPoints"""
+        a = np.array([[[i+1, j+1] for j in range(3)] for i in range(4)], dtype=np.float64)
+        u = cp_unit(a)
+        self.assertIsInstance(u, np.ndarray)
+        self.assertEqual(a.shape, u.shape)
+        for i in range(len(u)):
+            for j in range(len(u[0])):
+                self.assertAlmostEqual(cp_mag(u[i,j]), 1.0)
+    
+    def test_cp_unit_flint_array(self):
+        """Validate unit vectors for a 2-D array of flint CPoints"""
+        a = v_flint([[[i+1, j+1] for j in range(3)] for i in range(4)])
+        u = cp_unit(a)
+        self.assertIsInstance(u, np.ndarray)
+        self.assertEqual(a.shape, u.shape)
+        for i in range(len(u)):
+            for j in range(len(u[0])):
+                self.assertEqual(cp_mag(u[i,j]), 1.0)
