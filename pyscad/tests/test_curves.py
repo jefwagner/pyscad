@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from ..flint import v_flint
 from ..curves import *
 
 class TestKnotVector(unittest.TestCase):
@@ -193,6 +194,30 @@ class TestSpaceCurve(unittest.TestCase):
         self.assertEqual(len(t), 2)
         self.assertEqual(t[0], 1/np.sqrt(2))
         self.assertEqual(t[1], 1/np.sqrt(2))
+
+    def test_tangent_ufunc(self):
+        p = Parabola()
+        t0, t5, t1 = p.tangent([0,0.5,1])
+        self.assertEqual(len(t0), 2)
+        self.assertEqual(t0[0], 1)
+        self.assertEqual(t0[1], 0)
+        self.assertEqual(len(t5), 2)
+        self.assertEqual(t5[0], 1/np.sqrt(2))
+        self.assertEqual(t5[1], 1/np.sqrt(2))
+        self.assertEqual(len(t1), 2)
+        self.assertEqual(t1[0], 1/np.sqrt(5))
+        self.assertEqual(t1[1], 2/np.sqrt(5))
+
+    def test_curvature(self):
+        p = Parabola()
+        self.assertEqual(p.curvature(0), 2 )
+
+    def test_curvature_ufunc(self):
+        p = Parabola()
+        cn, c0, cp = p.curvature([-1,0,1])
+        self.assertEqual(c0, 2 )
+        print(cp)
+        self.assertEqual(cn, cp)
 
 
 class TestBSpline(unittest.TestCase):

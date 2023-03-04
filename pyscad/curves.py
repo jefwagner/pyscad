@@ -4,19 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy.integrate as integrate
 
-from .flint import flint
-
-# Number is a float or floating-point interval
-_Num = Union[float, flint]
-# And a control point is either a number or list of numbers
-CPoint = Union[_Num, Sequence[_Num]]
-# We will need arrays of flints, so it helps to vectorize the constructor
-v_flint = np.vectorize(flint)
-
-
-def q0(c: Sequence[CPoint], i: int) -> CPoint:
-    """Convenience function for extending a sequence beyond its limits with 0s""" 
-    return 0*c[0] if (i < 0 or i >= len(c)) else c[i]    
+from .flint import flint, v_flint, CPoint, cp_mag, cp_unit
 
 class KnotVector:
     """Basis Spline Knot Vector"""
@@ -68,6 +56,11 @@ class KnotVector:
         k = np.searchsorted(self.t, x)-1
         return np.clip(k, self.kmin, self.kmax)
 
+    @staticmethod
+    def q0(c: Sequence[CPoint], i: int) -> CPoint:
+        """Convenience function for extending a sequence beyond its limits with 0s""" 
+        return 0*c[0] if (i < 0 or i >= len(c)) else c[i]    
+
     def deboor(self,c: Sequence[CPoint], p: int,  x: float) -> CPoint:
         """Evaluate a b-spline on the knot-vector at a parametric
         @param c The sequence of control points
@@ -78,7 +71,7 @@ class KnotVector:
         first or last non-zero interval in the knot-vector.
         """
         k = self.k(x)
-        q = np.array([q0(c, k-r) for r in range(p,-1,-1)])
+        q = np.array([self.q0(c, k-r) for r in range(p,-1,-1)])
         for r in range(p):
             for j in range(p,r,-1):
                 l, m = np.clip((j+k-p, j+k-r),0,len(self.t)-1)
@@ -168,20 +161,25 @@ class SpaceCurve:
         @return The tangent vector
         """
         t = self.d(x, 1)
-        tsqr = np.sum(t*t, axis=-1)
-        tmag = tsqr.sqrt()
-        return (t.T/tmag**3).T
-
+        return cp_unit(t)
+ 
     def curvature(self, x: float) -> CPoint:
         """Find the curvature along the curve
         @param x The parametric point
         @return The curvature
         """
         _, t, n = self.d_list(x, 2)
-        c = numpy.cross(t,n)
-        cmag = flint.sqrt(sum(c*c))
-        tmag = flint.sqrt(sum(t*t))
-        return cmag/tmag
+        sh = list(t.shape)[:-1]
+        num = 1
+        for dim in sh:
+            num *= dim
+        c = np.cross(t,n)
+        cmag = c.reshape((num,))
+        for i in range(num):
+            cmag[i] = cp_mag(cmag[i])
+        cmag = cmag.reshape(sh)
+        tmag = cp_mag(t)
+        return cmag/(tmag*tmag*tmag)
 
 
 class BSpline(SpaceCurve):
@@ -204,7 +202,7 @@ class BSpline(SpaceCurve):
         @param x Parametric
         @return Point along the spline
         """
-        return self.t.deboor(self.p, self.c, x)
+        return self.t.deboor(self.c, self.p, x)
 
     def d(self, x: float, n: int = 1) -> CPoint:
         """Evaluate the derivative with respect to the parametric argument
@@ -212,8 +210,8 @@ class BSpline(SpaceCurve):
         @param n The order of the derivative
         @return The value of the derivative at the parametric value x
         """
-        d = self.t.d_points(self.p, self.c, n)
-        return self.t.deboor(self.p-n, d, x)
+        d_cpts = self.t.d_cpts_list(self.c, self.p, n)
+        return self.t.deboor(d_cpts[-1], self.p-n, x)
 
 
 # Small number binomimal coefficients for derivative calculations
