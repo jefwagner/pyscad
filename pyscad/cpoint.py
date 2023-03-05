@@ -119,15 +119,22 @@ def cp_vectorize(_func = None, *, ignore = ()):
                 # Get the value of the first value in the numpy array
                 vargs = [varg if i in ign else varg[0] for i, varg in enumerate(vec_args)]
                 first = func(*vargs)
-                cl = len(first)
-                res = np.empty((num,cl), dtype=first.dtype)
+                if isinstance(first, np.ndarray):
+                    cl = len(first)
+                    res = np.empty((num,cl), dtype=first.dtype)
+                else:
+                    dtype = flint if isinstance(first, flint) else float
+                    res = np.empty((num,), dtype=dtype)
                 res[0] = first
                 # Loop over all other values in the numpy array
                 for j in range(1,num):
                     vargs = [varg if i in ign else varg[j] for i, varg in enumerate(vec_args)]
                     res[j] = func(*vargs)
                 # Then reshape the output to look like the input
-                return res.reshape(list(sh)+[cl])
+                if isinstance(first, np.ndarray):
+                    return res.reshape(list(sh)+[cl])
+                else:
+                    return res.reshape(sh)
         return wrapper
     if _func is None:
         return decorator

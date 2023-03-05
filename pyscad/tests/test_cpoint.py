@@ -163,6 +163,24 @@ class TestCpVectorize(unittest.TestCase):
     """Testing the vectorize decorator"""
 
     @cp_vectorize
+    def scalar_zeros(self, x:float) -> CPoint:
+        return 0.0
+
+    def test_scalar_1arg(self):
+        """Validate vectorization for single argument functions"""
+        # Compare for a float input
+        res = self.scalar_zeros(0)
+        self.assertEqual(res, 0.0)
+        # Compare for a 1-D array input
+        res = self.scalar_zeros([0,1,2])
+        target = np.zeros((3,), dtype=np.float64)
+        self.assertTrue(np.alltrue(res == target))
+        # Compare for 2-D array input
+        res = self.scalar_zeros([[0,1,2,],[3,4,5],[6,7,8],[9,10,11]])
+        target = np.zeros((4,3), dtype=np.float64)
+        self.assertTrue(np.alltrue(res == target))
+
+    @cp_vectorize
     def float_zeros(self, x:float) -> CPoint:
         return np.array([0,0], dtype=np.float64)
 
