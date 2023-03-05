@@ -40,7 +40,7 @@ class BSpline(SpaceCurve):
         @param x Parametric
         @return Point along the spline
         """
-        return self._eval(x, 0, self.c)
+        return self.t.deboor(self.c, self.p, x)
 
     def d(self, x: float, n: int = 1) -> CPoint:
         """Evaluate the derivative with respect to the parametric argument
@@ -51,7 +51,7 @@ class BSpline(SpaceCurve):
         cpts = self.t.d_cpts(self.c, self.p)
         for i in range(1,n):
             cpts = self.t.d_cpts(d_cpts, self.p-i)
-        return self._eval(x, n, cpts)
+        return self.t.deboor(cpts, self.p-n, x)
 
     def d_list(self, x: float, n: int = 1) -> List[CPoint]:
         """Evaluate the derivative with respect to the parametric argument
@@ -63,6 +63,6 @@ class BSpline(SpaceCurve):
         d_cpts_list = self.t.d_cpts_list(self.c, self.p, n)
         res = []
         for i, cpts in enumerate(d_cpts_list):
-            res.append(self.eval(x, i, cpts))
+            res.append(self.t.deboor(cpts, self.p-i, x))
         return res
 

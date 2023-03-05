@@ -6,7 +6,7 @@ from typing import Sequence, Iterator, List
 import numpy as np
 import numpy.typing as npt
 
-from .cpoint import CPoint
+from .cpoint import CPoint, cp_vectorize
 
 class KnotVector:
     """Basis spline knot vector"""
@@ -63,7 +63,8 @@ class KnotVector:
         """Convenience function for extending a sequence beyond its limits with 0s""" 
         return 0*c[0] if (i < 0 or i >= len(c)) else c[i]    
 
-    def deboor(self,c: Sequence[CPoint], p: int,  x: float) -> CPoint:
+    @cp_vectorize(ignore=(0,1))
+    def deboor(self, c: Sequence[CPoint], p: int,  x: float) -> CPoint:
         """Evaluate a b-spline on the knot-vector at a parametric
         @param c The sequence of control points
         @param p The degree of the b-spline 
