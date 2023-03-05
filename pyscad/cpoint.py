@@ -94,13 +94,12 @@ def cp_vectorize(_func = None, *, ignore = ()):
         @functools.wraps(func)
         def wrapper(*args):
             # First cast all non-ignored arguments to numpy arrays
-            vec_args = []
-            for i, arg in enumerate(args):
-                vec_args.append(arg if i in ignore else np.array(arg))
+            ign = tuple([0] + [i+1 for i in list(ignore)])
+            vec_args = [arg if i in ign else np.array(arg) for i, arg in enumerate(args)]
             # Confirm vector arguments are all the same shape
             sh = None
             for i, varg in enumerate(vec_args):
-                if i not in ignore:
+                if i not in ign:
                     if sh is None:
                         sh = varg.shape
                     else:
@@ -115,17 +114,17 @@ def cp_vectorize(_func = None, *, ignore = ()):
                 for dim in sh:
                     num *= dim
                 for i, varg in enumerate(vec_args):
-                    if i not in ignore:
+                    if i not in ign:
                         vec_args[i] = vec_args[i].reshape((num,))
                 # Get the value of the first value in the numpy array
-                vargs = [varg if i in ignore else varg[0] for i, varg in enumerate(vec_args)]
+                vargs = [varg if i in ign else varg[0] for i, varg in enumerate(vec_args)]
                 first = func(*vargs)
                 cl = len(first)
                 res = np.empty((num,cl), dtype=first.dtype)
                 res[0] = first
                 # Loop over all other values in the numpy array
                 for j in range(1,num):
-                    vargs = [varg if i in ignore else varg[j] for i, varg in enumerate(vec_args)]
+                    vargs = [varg if i in ign else varg[j] for i, varg in enumerate(vec_args)]
                     res[j] = func(*vargs)
                 # Then reshape the output to look like the input
                 return res.reshape(list(sh)+[cl])

@@ -162,74 +162,76 @@ class TestCpUnit(unittest.TestCase):
 class TestCpVectorize(unittest.TestCase):
     """Testing the vectorize decorator"""
 
+    @cp_vectorize
+    def float_zeros(self, x:float) -> CPoint:
+        return np.array([0,0], dtype=np.float64)
+
     def test_floats_1arg(self):
         """Validate vectorization for single argument functions"""
-        # Define the function
-        @cp_vectorize
-        def zeros(x: float) -> CPoint:
-            return np.array([0,0], dtype=np.float64)
         # Compare for a float input
-        res = zeros(0)
+        res = self.float_zeros(0)
         target = np.zeros((2,), dtype=np.float64)
         self.assertTrue(np.alltrue(res == target))
         # Compare for a 1-D array input
-        res = zeros([0,1,2])
+        res = self.flint_zeros([0,1,2])
         target = np.zeros((3,2), dtype=np.float64)
         self.assertTrue(np.alltrue(res == target))
         # Compare for 2-D array input
-        res = zeros([[0,1,2,],[3,4,5],[6,7,8],[9,10,11]])
+        res = self.flint_zeros([[0,1,2,],[3,4,5],[6,7,8],[9,10,11]])
         target = np.zeros((4,3,2), dtype=np.float64)
         self.assertTrue(np.alltrue(res == target))
  
+    @cp_vectorize
+    def flint_zeros(self, x:float) -> CPoint:
+        return np.array([0,0], dtype=np.float64)
+
     def test_flint_1arg(self):
         """Validate vectorization for single argument functions"""
-        # Define the function
-        @cp_vectorize
-        def zeros(x: float) -> CPoint:
-            return v_flint([0,0])
         # Compare for a float input
-        res = zeros(0)
+        res = self.flint_zeros(0)
         target = np.full((2,), flint(0))
         self.assertTrue(np.alltrue(res == target))
         # Compare for a 1-D array input
-        res = zeros([0,1,2])
+        res = self.flint_zeros([0,1,2])
         target = np.full((3,2), flint(0))
         self.assertTrue(np.alltrue(res == target))
         # Compare for 2-D array input
-        res = zeros([[0,1,2,],[3,4,5],[6,7,8],[9,10,11]])
+        res = self.flint_zeros([[0,1,2,],[3,4,5],[6,7,8],[9,10,11]])
         target = np.full((4,3,2), flint(0))
         self.assertTrue(np.alltrue(res == target))
 
+    @cp_vectorize
+    def zeros_2arg(self, x: float, y: float) -> CPoint:
+        return v_flint([0,0])
+ 
     def test_2arg(self):
-        @cp_vectorize
-        def zeros(x: float, y: float) -> CPoint:
-            return v_flint([0,0])
-        res = zeros(0,0)
+        res = self.zeros_2arg(0,0)
         target = np.full((2,), flint(0))
         self.assertTrue(np.alltrue(res == target))
         # Compare for a 1-D array input
-        res = zeros([0,1,2],[0,1,2])
+        res = self.zeros_2arg([0,1,2],[0,1,2])
         target = np.full((3,2), flint(0))
         self.assertTrue(np.alltrue(res == target))
         # Compare for 2-D array input
         x = [[0,1,2,],[3,4,5],[6,7,8],[9,10,11]]
-        res = zeros(x,x)
+        res = self.zeros_2arg(x,x)
         target = np.full((4,3,2), flint(0))
         self.assertTrue(np.alltrue(res == target))
+
+    @cp_vectorize(ignore=(2,))
+    def zeros_ignore(self, x: float, y: float, a: int) -> CPoint:
+        return v_flint([a,a])
 
     def test_ignore(self):
-        @cp_vectorize(ignore=(2,))
-        def zeros(x: float, y: float, a: float) -> CPoint:
-            return v_flint([0,0])
-        res = zeros(0,0,0)
-        target = np.full((2,), flint(0))
+        res = self.zeros_ignore(0,0,1)
+        target = np.full((2,), flint(1))
         self.assertTrue(np.alltrue(res == target))
         # Compare for a 1-D array input
-        res = zeros([0,1,2],[0,1,2],0)
-        target = np.full((3,2), flint(0))
+        res = self.zeros_ignore([0,1,2],[0,1,2],2)
+        target = np.full((3,2), flint(2))
         self.assertTrue(np.alltrue(res == target))
         # Compare for 2-D array input
         x = [[0,1,2,],[3,4,5],[6,7,8],[9,10,11]]
-        res = zeros(x,x,0)
-        target = np.full((4,3,2), flint(0))
+        res = self.zeros_ignore(x,x,3)
+        target = np.full((4,3,2), flint(3))
         self.assertTrue(np.alltrue(res == target))
