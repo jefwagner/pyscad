@@ -4,7 +4,8 @@ import numpy as np
 import numpy.typing as npt
 import scipy.integrate as integrate
 
-from .flint import flint, v_flint, CPoint, cp_mag, cp_unit
+from .flint import flint, v_flint
+from .cpoint import CPoint, cp_mag, cp_unit, cp_vectorize
 
 class KnotVector:
     """Basis Spline Knot Vector"""
@@ -129,8 +130,8 @@ class SpaceCurve:
         """Return the value and first n derivatives of the curve
         @param x The parametric value
         @param n The highest order of the derivative
-        @return a list containg the value of the curve and its first n derivativs at the 
-        parametric point x
+        @return a list containing the value of the curve and its first n derivativs at 
+        the parametric point x
         """
         dl = [self.__call__(x)]
         for i in range(n):
@@ -155,6 +156,7 @@ class SpaceCurve:
             ),a,b)
         return res[0]
 
+    @cp_vectorize
     def tangent(self, x: float) -> CPoint:
         """Find the tangent vector along the curve
         @param x The parametric point
@@ -163,6 +165,7 @@ class SpaceCurve:
         t = self.d(x, 1)
         return cp_unit(t)
  
+    @cp_vectorize
     def curvature(self, x: float) -> CPoint:
         """Find the curvature along the curve
         @param x The parametric point
@@ -197,12 +200,22 @@ class BSpline(SpaceCurve):
         self.p = p
         self.t = KnotVector(t)
     
+    @cp_vectorize(ignore=(1,2))
+    def _eval(self, x: float, n: int, cpts: npt.NDArray[CPoint]) -> CPoint:
+        """Vectorized internal method for evaluating points and derivatives
+        @param cpts The control points to use for the evaluation
+        @param n The order of the derivative
+        @param x The parametric point
+        @return The value of spline or the nth derivative at the point x
+        """
+        return self.t.deboor(cpts, self.p-n, x)
+
     def __call__(self, x: float) -> CPoint:
         """Evaluate the basis spline
         @param x Parametric
         @return Point along the spline
         """
-        return self.t.deboor(self.c, self.p, x)
+        return self._eval(x, 0, self.cpts)
 
     def d(self, x: float, n: int = 1) -> CPoint:
         """Evaluate the derivative with respect to the parametric argument
@@ -210,21 +223,35 @@ class BSpline(SpaceCurve):
         @param n The order of the derivative
         @return The value of the derivative at the parametric value x
         """
-        d_cpts = self.t.d_cpts_list(self.c, self.p, n)
-        return self.t.deboor(d_cpts[-1], self.p-n, x)
+        cpts = self.t.d_cpts(self.c, self.p)
+        for i in range(1,n):
+            cpts = self.t.d_cpts(d_cpts, self.p-i)
+        return self._eval(x, n, cpts)
 
+    def d_list(self, x: float, n: int = 1) -> List[CPoint]:
+        """Evaluate the derivative with respect to the parametric argument
+        @param x Parametric value
+        @param n The highest order of the derivative
+        @return a list containing the value of the bspline and its first n derivatives 
+        at the parametric point x
+        """
+        d_cpts_list = self.t.d_cpts_list(self.c, self.p, n)
+        res = []
+        for i, cpts in enumerate(d_cpts_list):
+            res.append(self.eval(x, i, cpts))
+        return res
 
-# Small number binomimal coefficients for derivative calculations
-binom = np.array([
-    [1,0,0,0,0],
-    [1,1,0,0,0],
-    [1,2,1,0,0],
-    [1,3,3,1,0],
-    [1,4,6,4,1],
-])
 
 class NurbsCurve(SpaceCurve):
     """Non-uniform Rational Basis Splines"""
+
+    binom = np.array([
+        [1,0,0,0,0],
+        [1,1,0,0,0],
+        [1,2,1,0,0],
+        [1,3,3,1,0],
+        [1,4,6,4,1],
+    ])
 
     def __init__(self, 
                  c: Sequence[CPoint], 
@@ -276,7 +303,7 @@ class NurbsCurve(SpaceCurve):
             # calc the next derivative
             res = c[-1]
             for k in range(1,i+2):
-                res -= binom[i+1,k]*((s[i+1-k].T*w[k]).T)
+                res -= self._binom[i+1,k]*((s[i+1-k].T*w[k]).T)
             s.append((res.T/w[0]).T)
         return s
 

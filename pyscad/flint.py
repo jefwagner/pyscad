@@ -1,5 +1,6 @@
-# @file Floating point rounded interval arithmetic
-# Implements a new numeric class for floating point intervals
+"""@file Floating point rounded interval arithmetic
+Implements a new numeric class for floating point intervals
+"""
 
 # Most operations will act on intervals for normal floats
 from typing import Union, Sequence
@@ -201,48 +202,12 @@ class flint:
         return result
 
 # A number is either a float or floating point interval
-_Num = Union[float, flint]
+FloatLike = Union[float, flint]
 
 # We will need arrays of flints, so it helps to vectorize the constructor
 _v_flint = np.vectorize(flint)
 # This little function allows numbers to remain numbers
-def v_flint(x: _Num) -> flint:
+def v_flint(x: FloatLike) -> flint:
     """A ufunc that cast all elements to flints"""
     ret = _v_flint(x)
     return ret if ret.shape != () else ret.item()
-
-# A control point is a 2-D or 3-D vector of numbers
-CPoint = Sequence[_Num]
-
-def cp_mag(x: CPoint) -> _Num:
-    """Get the magnitude of a control point vector"""
-    sqr_sum = np.sum(x*x, axis=-1)
-    # If a single CPoint is fed in, we return a flint or float magnitude
-    if isinstance(sqr_sum, flint):
-        return sqr_sum.sqrt()
-    elif isinstance(sqr_sum, (float, int)):
-        return np.sqrt(sqr_sum)
-    # If a numpy array of CPoints is fed in we have to apply to sqrt to all of them
-    else:
-        shape = sqr_sum.shape
-        n = 1
-        for dim in shape:
-            n *= dim
-        mag = sqr_sum.reshape((n,))
-        for i in range(n):
-            if isinstance(mag[i], flint):
-                mag[i] = mag[i].sqrt()
-            else:
-                mag[i] = np.sqrt(mag[i])
-        return mag.reshape(shape)
-
-def cp_unit(x: CPoint) -> CPoint:
-    """Get a unit vector of a control point vector"""
-    xmag = cp_mag(x)
-    # This gives a little help to the broadcasting so we can do element wise
-    # multiplication/division with CPoint vectors and scalars
-    if len(x.shape) > 1:
-        sh = list(xmag.shape)+[1]
-        return x/xmag.reshape(sh)
-    else:
-        return x/xmag
