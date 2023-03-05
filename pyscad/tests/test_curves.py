@@ -5,6 +5,41 @@ import numpy as np
 from ..flint import v_flint
 from ..curves import *
 
+# A single spline basis function is calculated for degree 2 with the knot-vector
+# (0,1,2,3).
+# $$
+# B_{2,0}(t) = \begin{cases}
+#     t^2/2 &\text{for}\quad 0 \le t < 1, \\
+#     (-2t^2+6t-3)/2 \quad&\text{for} 1 \le t < 2, \\
+#     (3-t)^2/2 \quad&\text{for} 2 \le t < 3.
+# $$
+def simple_basis(t:float) -> float:
+    """Simple basis function of degree 2 for knot-vector (0,1,2,3)"""
+    if t < 1:
+        return 0.5*t*t
+    elif t < 2:
+        return 0.5*(-2*t*t+6*t-3)
+    else:
+        return 0.5*(3-t)*(3-t)
+
+def simple_basis_d1(t:float) -> float:
+    """first derivative of the basis function of degree 2 for knot-vector (0,1,2,3)"""
+    if t < 1:
+        return 1.0*t
+    elif t < 2:
+        return -2.0*t+3
+    else:
+        return t-3.0
+
+def simple_basis_d2(t:float) -> float:
+    """second derivative of the basis function of degree 2 for knot-vector (0,1,2,3)"""
+    if t < 1:
+        return 1.0
+    elif t < 2:
+        return -2.0
+    else:
+        return 1.0
+
 class TestKnotVector(unittest.TestCase):
     """A test suite for the a knot-vector object"""
 
@@ -69,23 +104,6 @@ class TestKnotVector(unittest.TestCase):
         for i, kk in enumerate(k):
             self.assertEqual(i, kk)
 
-    # The deboor's algorithm uses a knot-vector to evaluate splines. To test this we
-    # will use the hand derived basis function or degree 2 for the knot-vector (0,1,2,3)
-    # $$
-    # B_{2,0}(t) = \begin{cases}
-    #     t^2/2 &\text{for}\quad 0 \le t < 1, \\
-    #     (-2t^2+6t-3)/2 \quad&\text{for} 1 \le t < 2, \\
-    #     (3-t)^2/2 \quad&\text{for} 2 \le t < 3.
-    # $$
-    def simple_basis(self, t:float) -> float:
-        """Simple basis function of degree 2 for knot-vector (0,1,2,3)"""
-        if t < 1:
-            return 0.5*t*t
-        elif t < 2:
-            return 0.5*(-2*t*t+6*t-3)
-        else:
-            return 0.5*(3-t)*(3-t)
-
     def test_deboor(self):
         """Validate the de Boor algorithm for a simple case"""
         p = 2
@@ -93,7 +111,7 @@ class TestKnotVector(unittest.TestCase):
         tv = KnotVector([0,1,2,3])
         for t in np.linspace(0,3,30):
             basis_spline = tv.deboor(c,p,t)
-            basis_func = self.simple_basis(t)
+            basis_func = simple_basis(t)
             self.assertAlmostEqual(basis_spline, basis_func)
 
     def test_d_cpts(self):
@@ -221,18 +239,36 @@ class TestSpaceCurve(unittest.TestCase):
 
 
 class TestBSpline(unittest.TestCase):
+    """Test the basis-spline object"""
+
+    def setUp(self):
+        """We will be testing against simple basis on 0123 knot vector"""
+        p = 2
+        c = [[1,-1]]
+        t = [0,1,2,3]
+        self.bs = BSpline(c,p,t)
 
     def test_init(self):
-        p = 2
-        c = [0,1]
-        t = [0,0,0,0,1]
+        """Validate the initialization works correctly"""
+        self.assertIsInstance(self.bs, SpaceCurve)
+        self.assertIsInstance(self.bs, BSpline)
+        self.assertEqual(self.bs.p, 2)
+        self.assertIsInstance(self.bs.c, np.ndarray)
         with self.assertRaises(ValueError):
-            bs = BSpline(c,p,[0,1])
-        bs = BSpline(c,p,t)
-        self.assertIsInstance(bs, SpaceCurve)
-        self.assertIsInstance(bs, BSpline)
-        self.assertEqual(bs.p, 2)
-        self.assertIsInstance(bs.c, np.ndarray)
+            bad = BSpline(self.bs.c, self.bs.p, [0,1])
+    
+    def test_call_float(self):
+        for tval in np.linspace(0,3,10):
+            a = self.bs(tval)
+            b = simple_basis(tval)
+            # value were close, but not close enough, needed to grow
+            a[0]._grow()
+            a[1]._grow()
+            self.assertEqual(a[0], b)
+            self.assertEqual(a[1], -b)
+
+    def test_call_vec(self):
+        pass
 
 
 class TestNurbsCurve(unittest.TestCase):
