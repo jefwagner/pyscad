@@ -24,7 +24,7 @@ class SpaceCurve:
         """Return the value and first n derivatives of the curve
         @param x The parametric value
         @param n The highest order of the derivative
-        @return a list containing the value of the curve and its first n derivativs at 
+        @return a list containing the value of the curve and its first n derivatives at 
         the parametric point x
         """
         dl = [self.__call__(x)]
