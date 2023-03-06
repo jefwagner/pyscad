@@ -13,7 +13,7 @@ from .curves import SpaceCurve
 class NurbsCurve(SpaceCurve):
     """Non-uniform Rational Basis Splines"""
 
-    binom = np.array([
+    _binom = np.array([
         [1,0,0,0,0],
         [1,1,0,0,0],
         [1,2,1,0,0],
@@ -47,8 +47,8 @@ class NurbsCurve(SpaceCurve):
         @return Point along the spline
         """
         wc = self.c*self.w
-        c = self.t.deboor(self.p, wc, x)
-        w = self.t.deboor(self.p, self.w, x)
+        c = self.t.deboor(wc, self.p, x)
+        w = self.t.deboor(self.w, self.p, x)
         return c/w
 
     def d_list(self, x: float, n: int = 1) -> List[CPoint]:
@@ -60,14 +60,14 @@ class NurbsCurve(SpaceCurve):
         c, w, s = [], [], []
         wc = self.c*self.w
         _w = self.w.copy()
-        c.append(self.t.deboor(self.p, wc, x))
-        w.append(self.t.deboor(self.p, _w, x))
+        c.append(self.t.deboor(wc, self.p, x))
+        w.append(self.t.deboor(_w, self.p, x))
         s.append(c[0]/w[0])
         for i in range(n):
-            wc = self.t.d_points(self.p-i, wc, 1)
-            _w = self.t.d_points(self.p-i, _w, 1)
-            c.append(self.t.deboor(self.p-i-1, wc, x))
-            w.append(self.t.deboor(self.p-i-1, _w, x))
+            wc = self.t.d_cpts(wc, self.p-i)
+            _w = self.t.d_cpts(_w, self.p-i)
+            c.append(self.t.deboor(wc, self.p-i-1, x))
+            w.append(self.t.deboor(_w, self.p-i-1, x))
             # calc the next derivative
             res = c[-1]
             for k in range(1,i+2):
