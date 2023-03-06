@@ -50,7 +50,7 @@ class BSpline(SpaceCurve):
         """
         cpts = self.t.d_cpts(self.c, self.p)
         for i in range(1,n):
-            cpts = self.t.d_cpts(d_cpts, self.p-i)
+            cpts = self.t.d_cpts(cpts, self.p-i)
         return self.t.deboor(cpts, self.p-n, x)
 
     def d_list(self, x: float, n: int = 1) -> List[CPoint]:

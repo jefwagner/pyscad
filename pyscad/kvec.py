@@ -55,7 +55,7 @@ class KnotVector:
         argument x. Note: If x is outside the range of the knot-vector, then this will
         return the index of the first or last non-zero interval in the knot-vector
         """
-        k = np.searchsorted(self.t, x)-1
+        k = np.searchsorted(self.t, x, side='right')-1
         return np.clip(k, self.kmin, self.kmax)
 
     @staticmethod
