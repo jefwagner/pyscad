@@ -8,9 +8,9 @@ import numpy.typing as npt
 from .flint import v_flint
 from .cpoint import CPoint, cp_vectorize
 from .kvec import KnotVector
-from .curves import SpaceCurve
+from .curves import ParaCurve
 
-class BSpline(SpaceCurve):
+class BSpline(ParaCurve):
     """Normalized Basis Splines"""
 
     def __init__(self, c: Sequence[CPoint], p: int, t: Sequence[float]):

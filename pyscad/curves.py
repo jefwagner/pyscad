@@ -6,7 +6,7 @@ import scipy.integrate as integrate
 
 from .cpoint import CPoint, cp_mag, cp_unit
 
-class SpaceCurve:
+class ParaCurve:
     """An abstract base class for D-dimensional parametric curve
     This class assumes that the corresponding curve class will have a vectorized
     `__call__(x)` function that gives the value at a parametric point `x` and a

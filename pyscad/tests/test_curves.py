@@ -41,12 +41,12 @@ def simple_basis_d2(t:float) -> float:
         return 1.0
 
 
-class MissingMethods(SpaceCurve):
+class MissingMethods(ParaCurve):
     """Only hear to validate errors"""
     pass
 
 
-class Parabola(SpaceCurve):
+class Parabola(ParaCurve):
     """Give a parabola in 2-D"""
 
     def __call__(self, x):
@@ -73,7 +73,7 @@ class Parabola(SpaceCurve):
             return np.array([x,y]).T
 
 
-class TestSpaceCurve(unittest.TestCase):
+class TestParaCurve(unittest.TestCase):
     """Test the generic space-curve functions"""
 
     def test_error(self):
@@ -135,7 +135,6 @@ class TestSpaceCurve(unittest.TestCase):
         p = Parabola()
         cn, c0, cp = p.curvature([-1,0,1])
         self.assertEqual(c0, 2)
-        print(cp)
         self.assertEqual(cn, cp)
 
 

@@ -8,10 +8,10 @@ import numpy.typing as npt
 from .flint import v_flint
 from .cpoint import CPoint, cp_vectorize
 from .kvec import KnotVector
-from .curves import SpaceCurve
+from .curves import ParaCurve
 from .surf import ParaSurf
 
-class NurbsCurve(SpaceCurve):
+class NurbsCurve(ParaCurve):
     """Non-uniform Rational Basis Splines"""
 
     _binom = np.array([

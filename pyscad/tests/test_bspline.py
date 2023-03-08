@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from ..flint import v_flint
-from ..curves import SpaceCurve
+from ..curves import ParaCurve
 from ..bspline import BSpline
 from .test_curves import simple_basis, simple_basis_d1, simple_basis_d2
 
@@ -15,7 +15,7 @@ class TestInit(unittest.TestCase):
         p = 2
         t = [0,1,2,3]
         self.bs = BSpline([[1,-1]],p,t)
-        self.assertIsInstance(self.bs, SpaceCurve)
+        self.assertIsInstance(self.bs, ParaCurve)
         self.assertIsInstance(self.bs, BSpline)
         self.assertEqual(self.bs.p, 2)
         self.assertIsInstance(self.bs.c, np.ndarray)

@@ -4,7 +4,7 @@ import numpy as np
 
 from ..flint import v_flint
 from ..cpoint import cp_mag
-from ..curves import SpaceCurve
+from ..curves import ParaCurve
 from ..nurbs import NurbsCurve
 
 # For all test we will be doing a quarter circle nurbs curve
@@ -29,7 +29,7 @@ class TestInit(unittest.TestCase):
     def test_init(self):
         """Validate the class types and internal members"""
         ns = NurbsCurve(qc_c,qc_w,qc_p,qc_t)
-        self.assertIsInstance(ns, SpaceCurve)
+        self.assertIsInstance(ns, ParaCurve)
         self.assertIsInstance(ns, NurbsCurve)
         self.assertEqual(len(ns.c), len(ns.w))
         self.assertEqual(ns.p, 2)
