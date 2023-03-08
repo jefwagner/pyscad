@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 from ..flint import v_flint
-from ..kvec import KnotVector
+from ..kvec import KnotVector, KnotMatrix
 
 # A single spline basis function is calculated for degree 2 with the knot-vector
 # (0,1,2,3).
@@ -139,3 +139,16 @@ class TestKnotVector(unittest.TestCase):
         self.assertAlmostEqual(d2[0], 1.0)
         self.assertAlmostEqual(d2[1], -2.0)
         self.assertAlmostEqual(d2[2], 1.0)
+
+
+class TestKnotMatrix(unittest.TestCase):
+    """Test for the knot-matrix object - kind of a direct product of knot vectors"""
+
+    def test_init(self):
+        u = np.linspace(0,1,5)
+        v = np.linspace(0,1,6)
+        km = KnotMatrix(u,v)
+        self.assertIsInstance(km, KnotMatrix)
+        self.assertIsInstance(km.tu, KnotVector)
+        self.assertIsInstance(km.tv, KnotVector)
+        self.assertEqual(km.shape, (5,6))

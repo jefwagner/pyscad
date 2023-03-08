@@ -9,6 +9,7 @@ from .flint import v_flint
 from .cpoint import CPoint, cp_vectorize
 from .kvec import KnotVector
 from .curves import SpaceCurve
+from .surf import ParaSurf
 
 class NurbsCurve(SpaceCurve):
     """Non-uniform Rational Basis Splines"""
@@ -82,4 +83,44 @@ class NurbsCurve(SpaceCurve):
         @return The n^th derivative at the point x along the spline
         """
         return self.d_list(x, n)[-1]
-        
+
+
+class NurbsSurf(ParaSurf):
+
+    def __init__(self,
+                 c: Sequence[Sequence[CPoint]],
+                 w: Sequence[Sequence[float]],
+                 pu: int,
+                 pv: int,
+                 tu: Sequence[float],
+                 tv: Sequence[float]):
+        """Create a new NURBS surface object
+        @param c The control points
+        @param w The weights
+        @param pu Degree of the u direction b-spline basis functions
+        @param pv Degree of the v direction b-spline basis functions
+        @param tu the u direction knot-vector
+        @param tv the v direction knot-vector
+        """
+        self.c = v_flint(c)
+        self.w = np.array([w], dtype=np.float64)
+        if self.c.shape[:2] != self.w.shape:
+            raise ValueError('The control points and weights must have the same shape')
+        if len(tu) != len(c[0]) + pu + 1:
+            raise ValueError('u-direction knot vector wrong length')
+        if len(tv) != len(c) + pv + 1:
+            raise ValueError('v-direction knot vector wrong length')
+        self.pu = pu
+        self.pv = pv
+        self.t = KnotMatrix(tu, tv)
+
+    def __call__(self, u: float, v: float) -> CPoint:
+        """Evaluate the surface at a parametric point (u,v)
+        @param u the u parameter
+        @param v the v parameter
+        @return The position of the surface at the parametric point (u,v)
+        """
+        wc = self.c*self.w
+        c = self.t.deboor(wc, self.pu, self.pv, u, v)
+        w = self.t.deboor(self.w, self.pu, self.pv, u, v)
+        return c/w

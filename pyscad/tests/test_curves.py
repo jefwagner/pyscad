@@ -77,7 +77,7 @@ class TestSpaceCurve(unittest.TestCase):
     """Test the generic space-curve functions"""
 
     def test_error(self):
-        """Validate that if methods aren't """
+        """Validate that exception is thrown if methods aren't yet defined"""
         mm = MissingMethods()
         with self.assertRaises(NotImplementedError):
             mm(1.0)
