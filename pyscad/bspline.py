@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .flint import v_flint
-from .cpoint import CPoint, cp_vectorize
+from .cpoint import CPoint
 from .kvec import KnotVector, KnotMatrix
 from .curves import ParaCurve
 from .surf import ParaSurf
@@ -74,7 +74,7 @@ class BSplineSurf(ParaSurf):
         @param tu The knot-vector in the u direction
         @param tv The knot-vector in the v direction
         """
-        self.c = np.array(c)
+        self.c = v_flint(np.array(c))
         if len(tu) != len(c[0]) + pu + 1:
             raise ValueError('u-direction knot vector wrong length')
         if len(tv) != len(c) + pv + 1:
@@ -91,16 +91,31 @@ class BSplineSurf(ParaSurf):
         """
         return self.t.deboor(self.c, self.pu, self.pv, u, v)
 
-    def d(self, u:float, v:float, nu: int, np: int):
+    def d(self, u:float, v:float, nu: int, nv: int):
         """Evaluate a partial derivative of the surface the parametric point (u,v)
         @param u The u parameter
         @param v The v parameter
+        @param nu The order of the u partial derivative
+        @param nv The order of the v partial derivative
         @return A derivative corresponding to the parametric point (u,v)
         """
         cpts = self.c
-        for _ in range(nu):
-            cpts = self.t.d_cpts(cpts, 'u')
-        for _ in range(nv):
-            cpts = self.t.d_dpts(cpts, 'v')
+        for i in range(nu):
+            cpts = self.t.du_cpts(cpts, self.pu-i)
+        for j in range(nv):
+            cpts = self.t.dv_cpts(cpts, self.pv-j)
         return self.t.deboor(cpts, self.pu-nu, self.pv-nv, u, v)
 
+    def d_list(self, u:float, v:float, nmax: int) -> List[List[CPoint]]:
+        """Evaluate the surface function and partial derivatives up to a max order
+        @param u The u parameter 
+        @param v The v parameter
+        @param nmax A triangular array of the surface and its partial derivatives
+        evaluated at the parametric point (u,v). 
+        """
+        cpts = self.t.d_cpts_list(self.c, self.pu, self.pv, nmax)
+        res = [[None for _ in range(nmax+1-i)] for i in range(nmax+1)]
+        for i in range(nmax+1):
+            for j in range(nmax+1-i):
+                res[i][j] = self.t.deboor(cpts[i][j], self.pu-i, self.pv-j, u, v)
+        return res

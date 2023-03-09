@@ -152,3 +152,55 @@ class TestKnotMatrix(unittest.TestCase):
         self.assertIsInstance(km.tu, KnotVector)
         self.assertIsInstance(km.tv, KnotVector)
         self.assertEqual(km.shape, (5,6))
+
+    def test_du_cpts(self):
+        t = [0., 1., 2., 3.]
+        km = KnotMatrix(t,t)
+        cpts = [[1.0]]
+        cpts = km.du_cpts(cpts, 2)
+        self.assertEqual(cpts.shape, (2,1))
+        self.assertAlmostEqual(cpts[0,0], 1.0)
+        self.assertAlmostEqual(cpts[1,0], -1.0)
+
+    def test_dv_cpts(self):
+        t = [0., 1., 2., 3.]
+        km = KnotMatrix(t,t)
+        cpts = [[1.0]]
+        cpts = km.dv_cpts(cpts, 2)
+        self.assertEqual(cpts.shape, (1,2))
+        self.assertAlmostEqual(cpts[0,0], 1.0)
+        self.assertAlmostEqual(cpts[0,1], -1.0)
+
+    def test_dudv(self):
+        t = [0., 1., 2., 3.]
+        km = KnotMatrix(t,t)
+        cpts = [[1.0]]
+        # First do 'u' then 'v'
+        cpts = km.du_cpts(cpts, 2)
+        cpts = km.dv_cpts(cpts, 2)
+        self.assertEqual(cpts.shape, (2,2))
+        self.assertAlmostEqual(cpts[0,0], 1.0)
+        self.assertAlmostEqual(cpts[0,1], -1.0)
+        self.assertAlmostEqual(cpts[1,0], -1.0)
+        self.assertAlmostEqual(cpts[1,1], 1.0)
+        cpts = [[1.0]]
+        # first do 'v' then 'u'
+        cpts = km.dv_cpts(cpts, 2)
+        cpts = km.du_cpts(cpts, 2)
+        self.assertEqual(cpts.shape, (2,2))
+        self.assertAlmostEqual(cpts[0,0], 1.0)
+        self.assertAlmostEqual(cpts[0,1], -1.0)
+        self.assertAlmostEqual(cpts[1,0], -1.0)
+        self.assertAlmostEqual(cpts[1,1], 1.0)
+
+    def test_d_cpts_list(self):
+        t = [0., 1., 2., 3.]
+        km = KnotMatrix(t,t)
+        cpts = np.array([[1.0]], dtype=np.float64)
+        cpts = km.d_cpts_list(cpts, 2, 2, 2)
+        self.assertTrue(np.alltrue(cpts[0][0]==np.array([[1.0]])))
+        self.assertTrue(np.alltrue(cpts[0][1]==np.array([[1.0,-1.0]])))
+        self.assertTrue(np.alltrue(cpts[0][2]==np.array([[1.0,-2.0,1.0]])))
+        self.assertTrue(np.alltrue(cpts[1][0]==np.array([[1.0],[-1.0]])))
+        self.assertTrue(np.alltrue(cpts[1][1]==np.array([[1.0,-1.0],[-1.0,1.0]])))
+        self.assertTrue(np.alltrue(cpts[2][0]==np.array([[1.0],[-2.0],[1.0]])))

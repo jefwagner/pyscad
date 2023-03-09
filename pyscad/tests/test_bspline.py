@@ -4,13 +4,14 @@ import numpy as np
 
 from ..flint import v_flint
 from ..curves import ParaCurve
-from ..bspline import BSpline
+from ..surf import ParaSurf
+from ..bspline import BSpline, BSplineSurf
 from .test_curves import simple_basis, simple_basis_d1, simple_basis_d2
 
 class TestInit(unittest.TestCase):
     """Test the internal structure and class interface for a b-spline"""
 
-    def test_init(self):
+    def test_curve(self):
         """Validate the initialization works correctly"""
         p = 2
         t = [0,1,2,3]
@@ -21,6 +22,23 @@ class TestInit(unittest.TestCase):
         self.assertIsInstance(self.bs.c, np.ndarray)
         with self.assertRaises(ValueError):
             bad = BSpline(self.bs.c, self.bs.p, [0,1])
+
+    def test_surf(self):
+        """Validate the surface initialization works correctly"""
+        p = 2
+        t = [0,1,2,3]
+        c = [[[1,1,1]]]
+        s = BSplineSurf(c, p, p, t, t)
+        self.assertIsInstance(s, ParaSurf)
+        self.assertIsInstance(s, BSplineSurf)
+        self.assertEqual(s.pu, p)
+        self.assertEqual(s.pv, p)
+        self.assertIsInstance(s.c, np.ndarray)
+        self.assertEqual(s.c.shape, (1,1,3))
+        with self.assertRaises(ValueError):
+            bad = BSplineSurf([[[1,1,1]]],3,p,t,t)
+        with self.assertRaises(ValueError):
+            bad = BSplineSurf([[[1,1,1]]],p,p,t,[1,2,3])
 
 
 class TestCPointTypes(unittest.TestCase):
@@ -38,6 +56,23 @@ class TestCPointTypes(unittest.TestCase):
             a._grow()
             self.assertEqual(a, b)
     
+    def test_call_flint_surf(self):
+        """Validate the behavior for scalar control points"""
+        p = 2
+        t = [0,1,2,3]
+        s = BSplineSurf([[1.0]],p,p,t,t)
+        uu = np.linspace(0,3,10)
+        vv = np.linspace(0,3,10)
+        U, V = np.meshgrid(uu,vv)
+        U = U.reshape((100,))
+        V = V.reshape((100,))
+        for u,v in zip(U,V):
+            a = s(u,v)
+            b = simple_basis(u)*simple_basis(v)
+            # value were close, but not close enough, needed to grow
+            a._grow()
+            self.assertEqual(a, b)
+
     def test_call_1D(self):
         """Validate the behavior for 1-D control points"""
         p = 2
@@ -63,7 +98,7 @@ class TestCPointTypes(unittest.TestCase):
             self.assertEqual(a[1], -b)
 
 
-class TestEval(unittest.TestCase):
+class TestCurveEval(unittest.TestCase):
     """Test the evaluating the b-spline structure"""
 
     def setUp(self):
@@ -105,7 +140,63 @@ class TestEval(unittest.TestCase):
                 a[i,j,1]._grow()
         self.assertTrue(np.alltrue(a==b))
 
-class TestDerivative(unittest.TestCase):
+
+class TestSurfEval(unittest.TestCase):
+    """Test the evaluating the b-spline structure"""
+
+    def setUp(self):
+        """We will be testing against simple basis on 0123 knot vector"""
+        p = 2
+        t = [0,1,2,3]
+        self.s = BSplineSurf([[[1,-1]]], p, p, t, t)
+
+    def test_call_scalar(self):
+        uu = np.linspace(0,3,10)
+        vv = np.linspace(0,3,10)
+        U, V = np.meshgrid(uu,vv)
+        U = U.reshape((100,))
+        V = V.reshape((100,))
+        for u,v in zip(U,V):
+            a = self.s(u,v)
+            bval = simple_basis(u)*simple_basis(v)
+            b = v_flint([bval, -bval])
+            # value were close, but not close enough, needed to grow
+            a[0]._grow()
+            a[1]._grow()
+            self.assertTrue(np.alltrue(a==b))
+
+    def test_call_vector(self):
+        uu = np.linspace(0,3,10)
+        vv = np.full_like(uu, 1.5)
+        a = self.s(uu,vv)
+        b = np.empty((10,2), dtype=object)
+        for i, pvals in enumerate(zip(uu,vv)):
+            u,v = pvals
+            bval = simple_basis(u)*simple_basis(v)
+            b[i] = v_flint([bval, -bval])
+            # value were close, but not close enough, needed to grow
+            a[i,0]._grow()
+            a[i,1]._grow()
+        self.assertTrue(np.alltrue(a==b))
+
+    def test_call_array(self):
+        uu = np.linspace(0,3,10)
+        vv = np.linspace(0,3,10)
+        U, V = np.meshgrid(uu,vv)
+        a = self.s(U, V)
+        b = np.empty((10,10,2), dtype=object)
+        for i in range(10):
+            for j in range(10):
+                u, v = U[i,j], V[i,j]
+                bval = simple_basis(u)*simple_basis(v)
+                b[i,j] = v_flint([bval, -bval])
+                # value were close, but not close enough, needed to grow
+                a[i,j,0]._grow()
+                a[i,j,1]._grow()
+        self.assertTrue(np.alltrue(a==b))
+
+
+class TestCurveDerivative(unittest.TestCase):
     """Test the evaluating the derivative of the b-spline"""
 
     def setUp(self):
@@ -175,3 +266,112 @@ class TestDerivative(unittest.TestCase):
                 a[i,j,0]._grow()
                 a[i,j,1]._grow()
         self.assertTrue(np.alltrue(a==b))
+
+class TestSurfDerivatives(unittest.TestCase):
+    """Test suite for derivatives of the b-spline surface"""
+
+    def setUp(self):
+        """We will be testing against simple basis on 0123 knot vector"""
+        p = 2
+        t = [0,1,2,3]
+        self.s = BSplineSurf([[[1]]], p, p, t, t)
+
+    def test_du_scalar(self):
+        """Validate a single 'u' derivative for scalar input"""
+        for u in np.linspace(0,3,10):
+            a = self.s.d(u,1.5,1,0)
+            b = v_flint([simple_basis_d1(u)*simple_basis(1.5)])
+            a[0]._grow()
+            self.assertEqual(a, b)
+ 
+    def test_du_vector(self):
+        """Validate a single 'u' derivative for vector input"""
+        u = np.linspace(0,3,10)
+        v = np.full_like(u, 1.5)
+        a = self.s.d(u,v,1,0)
+        b = np.empty(a.shape, dtype=a.dtype)
+        for i in range(10):
+            b[i] = v_flint([simple_basis_d1(u[i])*simple_basis(1.5)])
+            a[i,0]._grow()
+        self.assertTrue(np.alltrue(a==b))
+
+    def test_du_array(self):
+        """Validate a single 'u' derivative for array input"""
+        u = np.linspace(0,3,10)
+        U, V = np.meshgrid(u,u)
+        a = self.s.d(U,V,1,0)
+        b = np.empty(a.shape, dtype=a.dtype)
+        for i in range(10):
+            for j in range(10):
+                b[i,j] = v_flint([simple_basis_d1(U[i,j])*simple_basis(V[i,j])])
+                a[i,j,0]._grow()
+        self.assertTrue(np.alltrue(a==b))
+
+    def test_dv_scalar(self):
+        """Validate a single 'v' derivative for scalar input"""
+        for v in np.linspace(0,3,10):
+            a = self.s.d(1.5,v,0,1)
+            b = v_flint([simple_basis_d1(v)*simple_basis(1.5)])
+            a[0]._grow()
+            self.assertEqual(a, b)
+ 
+    def test_dv_vector(self):
+        """Validate a single 'v' derivative for vector input"""
+        v = np.linspace(0,3,10)
+        u = np.full_like(v, 1.5)
+        a = self.s.d(u,v,0,1)
+        b = np.empty(a.shape, dtype=a.dtype)
+        for i in range(10):
+            b[i] = v_flint([simple_basis_d1(v[i])*simple_basis(1.5)])
+            a[i,0]._grow()
+        self.assertTrue(np.alltrue(a==b))
+
+    def test_dv_array(self):
+        """Validate a single 'v' derivative for array input"""
+        u = np.linspace(0,3,10)
+        U, V = np.meshgrid(u,u)
+        a = self.s.d(U,V,0,1)
+        b = np.empty(a.shape, dtype=a.dtype)
+        for i in range(10):
+            for j in range(10):
+                b[i,j] = v_flint([simple_basis_d1(V[i,j])*simple_basis(U[i,j])])
+                a[i,j,0]._grow()
+        self.assertTrue(np.alltrue(a==b))
+
+    def test_dudv_array(self):
+        """Validate combined 'u' and 'v' derivatives over the surface"""
+        u = np.linspace(0,3,10)
+        U, V = np.meshgrid(u,u)
+        a = self.s.d(U,V,1,1)
+        b = np.empty(a.shape, dtype=a.dtype)
+        for i in range(10):
+            for j in range(10):
+                b[i,j] = v_flint([simple_basis_d1(V[i,j])*simple_basis_d1(U[i,j])])
+                a[i,j,0]._grow()
+        self.assertTrue(np.alltrue(a==b))
+
+    def test_d_list_array(self):
+        """Validate generating list of list of partial derivatives"""
+        u = np.linspace(0,3,10)
+        U, V = np.meshgrid(u,u)
+        aa = self.s.d_list(U,V,2)
+        for ii in range(3):
+            for jj in range(3-ii):
+                a = aa[ii][jj]
+                b = np.empty(a.shape, dtype=a.dtype)
+                for i in range(10):
+                    for j in range(10):
+                        if ii == 0 and jj == 0:
+                            b[i,j] = v_flint([simple_basis(V[i,j])*simple_basis(U[i,j])])
+                        elif ii == 0 and jj == 1:
+                            b[i,j] = v_flint([simple_basis_d1(V[i,j])*simple_basis(U[i,j])])
+                        elif ii == 0 and jj == 2:
+                            b[i,j] = v_flint([simple_basis_d2(V[i,j])*simple_basis(U[i,j])])
+                        elif ii == 1 and jj == 0:
+                            b[i,j] = v_flint([simple_basis(V[i,j])*simple_basis_d1(U[i,j])])
+                        elif ii == 1 and jj == 1:
+                            b[i,j] = v_flint([simple_basis_d1(V[i,j])*simple_basis_d1(U[i,j])])
+                        elif ii == 2 and jj == 0:
+                            b[i,j] = v_flint([simple_basis(V[i,j])*simple_basis_d2(U[i,j])])
+                        a[i,j,0]._grow()
+                self.assertTrue(np.alltrue(a==b))

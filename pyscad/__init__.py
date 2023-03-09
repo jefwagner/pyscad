@@ -11,3 +11,5 @@ from .bspline import BSpline, BSplineSurf
 # Export the Nurbs curve object
 from .nurbs import NurbsCurve, NurbsSurf
 
+# Exposing knot vectors and matrix for testing
+from .kvec import KnotMatrix, KnotVector

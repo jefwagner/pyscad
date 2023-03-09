@@ -164,3 +164,65 @@ class KnotMatrix:
         for i in range(len(c)):
             cj[i] = self.tv.deboor_nv(c[i], pv, v)
         return self.tu.deboor_nv(cj, pu, u)
+
+    def du_cpts(self, c: Sequence[Sequence[CPoint]], pu: int) -> npt.NDArray[CPoint]:
+        """Create the new control points for the u partial derivative of the b-spline
+        surface
+        @param c The 2-D array of control points
+        @param pu The degree of the b-spline in the u direction
+        @return The set of control points for a pu-1
+        """
+        _c = np.array(c)
+        n, m = _c.shape[0], _c.shape[1]
+        r = np.append(_c, [[0*_c[0,0]]*m], axis=0)
+        for i in range(n,-1,-1):
+            dt = self.tu[i+pu]-self.tu[i]
+            r_im1 = r[i-1,:] if i-1 != -1 else 0*r[0,:]
+            if dt != 0:
+                r[i,:] = (pu)*(r[i,:]-r_im1)/dt
+            else:
+                r[i,:] = 0*r[i,:]
+        return r
+
+    def dv_cpts(self, c: Sequence[Sequence[CPoint]], pv: int) -> npt.NDArray[CPoint]:
+        """Create the new control points for the v partial derivative of the b-spline 
+        surface
+        @param c The 2-D array of control points
+        @param pv The degree of the b-spline in the v direction
+        @return The set of control points for a pu,pv-1 b-spline surface
+        """
+        _c = np.array(c)
+        n, m = _c.shape[0], _c.shape[1]
+        r = np.append(_c, [[0*_c[0,0]]]*n, axis=1)
+        for i in range(m,-1,-1):
+            dt = self.tv[i+pv]-self.tv[i]
+            r_im1 = r[:,i-1] if i-1 != -1 else 0*r[:,0]
+            if dt != 0:
+                r[:,i] = (pv)*(r[:,i]-r_im1)/dt
+            else:
+                r[:,i] = 0*r[:,i]
+        return r
+
+    def d_cpts_list(self, 
+                    c: Sequence[Sequence[CPoint]], 
+                    pu: int, 
+                    pv: int, 
+                    nmax: int) -> List[List[npt.NDArray[CPoint]]]:
+        """Create an triangular array of new control points for partial deriviatives of
+        the b-spline surface
+        @param c The 2-D array of control points
+        @param pu The degree of the b-spline in the u direction
+        @param pv The degree of the b-spline in the v direction
+        @param nmax The total maximum order of the partial derivatives
+        @return A triangular array of control points        
+        """
+        cpts = [[None for _ in range(nmax+1-i)] for i in range(nmax+1)]
+        cpts[0][0] = np.array(c)
+        for j in range(1, nmax+1):
+            cpts[0][j] = self.dv_cpts(cpts[0][j-1], pv-(j-1))
+        for i in range(1, nmax+1):
+            cpts[i][0] = self.du_cpts(cpts[i-1][0], pu-(i-1))
+            for j in range(1, nmax+1-i):
+                cpts[i][j] = self.dv_cpts(cpts[i][j-1], pv-(j-1))
+        return cpts
+        
