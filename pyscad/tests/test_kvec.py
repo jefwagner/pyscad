@@ -193,11 +193,28 @@ class TestKnotMatrix(unittest.TestCase):
         self.assertAlmostEqual(cpts[1,0], -1.0)
         self.assertAlmostEqual(cpts[1,1], 1.0)
 
-    def test_d_cpts_list(self):
+    def test_d_cpts_rect(self):
         t = [0., 1., 2., 3.]
         km = KnotMatrix(t,t)
         cpts = np.array([[1.0]], dtype=np.float64)
-        cpts = km.d_cpts_list(cpts, 2, 2, 2)
+        cpts = km.d_cpts_rect(cpts, 2, 2, 1, 1)
+        self.assertEqual(len(cpts), 2)
+        self.assertEqual(len(cpts[0]), 2)
+        self.assertEqual(len(cpts[1]), 2)
+        self.assertTrue(np.alltrue(cpts[0][0]==np.array([[1.0]])))
+        self.assertTrue(np.alltrue(cpts[0][1]==np.array([[1.0,-1.0]])))
+        self.assertTrue(np.alltrue(cpts[1][0]==np.array([[1.0],[-1.0]])))
+        self.assertTrue(np.alltrue(cpts[1][1]==np.array([[1.0,-1.0],[-1.0,1.0]])))
+
+    def test_d_cpts_tri(self):
+        t = [0., 1., 2., 3.]
+        km = KnotMatrix(t,t)
+        cpts = np.array([[1.0]], dtype=np.float64)
+        cpts = km.d_cpts_tri(cpts, 2, 2, 2)
+        self.assertEqual(len(cpts), 3)
+        self.assertEqual(len(cpts[0]), 3)
+        self.assertEqual(len(cpts[1]), 2)
+        self.assertEqual(len(cpts[2]), 1)
         self.assertTrue(np.alltrue(cpts[0][0]==np.array([[1.0]])))
         self.assertTrue(np.alltrue(cpts[0][1]==np.array([[1.0,-1.0]])))
         self.assertTrue(np.alltrue(cpts[0][2]==np.array([[1.0,-2.0,1.0]])))

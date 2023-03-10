@@ -97,7 +97,7 @@ class BSplineSurf(ParaSurf):
         @param v The v parameter
         @param nu The order of the u partial derivative
         @param nv The order of the v partial derivative
-        @return A derivative corresponding to the parametric point (u,v)
+        @return A partial derivative of the surface at the parametric point (u,v)
         """
         cpts = self.c
         for i in range(nu):
@@ -106,14 +106,30 @@ class BSplineSurf(ParaSurf):
             cpts = self.t.dv_cpts(cpts, self.pv-j)
         return self.t.deboor(cpts, self.pu-nu, self.pv-nv, u, v)
 
-    def d_list(self, u:float, v:float, nmax: int) -> List[List[CPoint]]:
+    def d_rect(self, u:float, v:float, nu: int, nv: int) -> List[List[CPoint]]:
+        """Evaluate the surface function and partial derivatives up to a max order
+        @param u The u parameter 
+        @param v The v parameter
+        @param nu The order of the u partial derivative
+        @param nv The order of the v partial derivative
+        @return A triangular array of the surface and its partial derivatives
+        evaluated at the parametric point (u,v). 
+        """
+        cpts = self.t.d_cpts_rect(self.c, self.pu, self.pv, nu, nv)
+        res = [[None for _ in range(nv+1)] for _ in range(nu+1)]
+        for i in range(nu+1):
+            for j in range(nv+1):
+                res[i][j] = self.t.deboor(cpts[i][j], self.pu-i, self.pv-j, u, v)
+        return res
+
+    def d_tri(self, u:float, v:float, nmax: int) -> List[List[CPoint]]:
         """Evaluate the surface function and partial derivatives up to a max order
         @param u The u parameter 
         @param v The v parameter
         @param nmax A triangular array of the surface and its partial derivatives
         evaluated at the parametric point (u,v). 
         """
-        cpts = self.t.d_cpts_list(self.c, self.pu, self.pv, nmax)
+        cpts = self.t.d_cpts_tri(self.c, self.pu, self.pv, nmax)
         res = [[None for _ in range(nmax+1-i)] for i in range(nmax+1)]
         for i in range(nmax+1):
             for j in range(nmax+1-i):

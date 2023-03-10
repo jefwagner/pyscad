@@ -5,14 +5,26 @@ import numpy as np
 from ..flint import v_flint
 from ..cpoint import cp_mag
 from ..curves import ParaCurve
-from ..nurbs import NurbsCurve
+from ..surf import ParaSurf
+from ..nurbs import NurbsCurve, NurbsSurf
 
-# For all test we will be doing a quarter circle nurbs curve
+# For all curve test we will be doing a NURBS quarter circle
 qc_c = [[1,0],[1,1],[0,1]]
 qc_w = [1,1/np.sqrt(2),1]
 qc_p = 2
 qc_t = [0,0,0,1,1,1]
 qc = NurbsCurve(qc_c, qc_w, qc_p, qc_t)
+
+# For all surface test we will be doing a section of torus
+R = 2
+a = 1
+ts_c = [[[R+a,0,0],[R+a,0,a],[R,0,a]],
+        [[R+a,R+a,0], [R+a,R+a,a],[R,R,a]],
+        [[0,R+a,0],[0,R+a,a],[0,R,a]]]
+ts_w = [[1,1/np.sqrt(2),1],[1/np.sqrt(2),1/2,1/np.sqrt(2)],[1,1/np.sqrt(2),1]]
+ts_pu, ts_pv = 2, 2
+ts_tu, ts_tv = [0,0,0,1,1,1], [0,0,0,1,1,1]
+ts = NurbsSurf(ts_c, ts_w, ts_pu, ts_pv, ts_tu, ts_tv)
 
 class TestInit(unittest.TestCase):
     """Test that the class and members are created correctly"""
@@ -26,8 +38,8 @@ class TestInit(unittest.TestCase):
         with self.assertRaises(ValueError):
             ns = NurbsCurve(qc_c, qc_w, qc_p, [0,1])
 
-    def test_init(self):
-        """Validate the class types and internal members"""
+    def test_curve(self):
+        """Validate the class types and internal members for a curve"""
         ns = NurbsCurve(qc_c,qc_w,qc_p,qc_t)
         self.assertIsInstance(ns, ParaCurve)
         self.assertIsInstance(ns, NurbsCurve)
@@ -38,6 +50,9 @@ class TestInit(unittest.TestCase):
         self.assertIsInstance(ns.w, np.ndarray)
         self.assertEqual(ns.w.shape, (3,1))
 
+    def test_surf(self):
+        """Validate the class types and internal members for a surface"""
+        raise NotImplementedError()
 
 class TestEval(unittest.TestCase):
     """Test evaluation of the curve and derivatives"""
@@ -78,3 +93,4 @@ class TestEval(unittest.TestCase):
         kappas = self.qc.curvature(t)
         for kappa in kappas:
             self.assertEqual(1.0, kappa)
+

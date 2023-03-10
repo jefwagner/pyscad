@@ -350,11 +350,33 @@ class TestSurfDerivatives(unittest.TestCase):
                 a[i,j,0]._grow()
         self.assertTrue(np.alltrue(a==b))
 
-    def test_d_list_array(self):
-        """Validate generating list of list of partial derivatives"""
+    def test_d_rect_array(self):
+        """Validate generating triangular array of partial derivatives"""
         u = np.linspace(0,3,10)
         U, V = np.meshgrid(u,u)
-        aa = self.s.d_list(U,V,2)
+        aa = self.s.d_rect(U,V,1,1)
+        for ii in range(2):
+            for jj in range(2):
+                a = aa[ii][jj]
+                b = np.empty(a.shape, dtype=a.dtype)
+                for i in range(10):
+                    for j in range(10):
+                        if ii == 0 and jj == 0:
+                            b[i,j] = v_flint([simple_basis(V[i,j])*simple_basis(U[i,j])])
+                        elif ii == 0 and jj == 1:
+                            b[i,j] = v_flint([simple_basis_d1(V[i,j])*simple_basis(U[i,j])])
+                        elif ii == 1 and jj == 0:
+                            b[i,j] = v_flint([simple_basis(V[i,j])*simple_basis_d1(U[i,j])])
+                        elif ii == 1 and jj == 1:
+                            b[i,j] = v_flint([simple_basis_d1(V[i,j])*simple_basis_d1(U[i,j])])
+                        a[i,j,0]._grow()
+                self.assertTrue(np.alltrue(a==b))
+
+    def test_d_tri_array(self):
+        """Validate generating triangular array of partial derivatives"""
+        u = np.linspace(0,3,10)
+        U, V = np.meshgrid(u,u)
+        aa = self.s.d_tri(U,V,2)
         for ii in range(3):
             for jj in range(3-ii):
                 a = aa[ii][jj]

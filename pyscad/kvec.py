@@ -203,26 +203,49 @@ class KnotMatrix:
                 r[:,i] = 0*r[:,i]
         return r
 
-    def d_cpts_list(self, 
+    def d_cpts_rect(self, 
                     c: Sequence[Sequence[CPoint]], 
                     pu: int, 
                     pv: int, 
-                    nmax: int) -> List[List[npt.NDArray[CPoint]]]:
+                    nu: int,
+                    nv: int) -> List[List[npt.NDArray[CPoint]]]:
+        """Create an rectangular array of new control points for partial deriviatives of
+        the b-spline surface
+        @param c The 2-D array of control points
+        @param pu The degree of the b-spline in the u direction
+        @param pv The degree of the b-spline in the v direction
+        @param nu The order of the 'u' partial derivative
+        @param nv The order of the 'v' partial derivative
+        @return A (nu+1, nv+1) rectangular array of control points        
+        """
+        cpts = [[None for _ in range(nu+1)] for _ in range(nv+1)]
+        cpts[0][0] = np.array(c)
+        for j in range(1, nv+1):
+            cpts[0][j] = self.dv_cpts(cpts[0][j-1], pv-(j-1))
+        for i in range(1, nu+1):
+            for j in range(nv+1):
+                cpts[i][j] = self.du_cpts(cpts[i-1][j], pu-(i-1))
+        return cpts
+
+    def d_cpts_tri(self, 
+                   c: Sequence[Sequence[CPoint]], 
+                   pu: int, 
+                   pv: int, 
+                   nmax: int) -> List[List[npt.NDArray[CPoint]]]:
         """Create an triangular array of new control points for partial deriviatives of
         the b-spline surface
         @param c The 2-D array of control points
         @param pu The degree of the b-spline in the u direction
         @param pv The degree of the b-spline in the v direction
         @param nmax The total maximum order of the partial derivatives
-        @return A triangular array of control points        
+        @return A nmax+1 sized triangular array of control points        
         """
         cpts = [[None for _ in range(nmax+1-i)] for i in range(nmax+1)]
         cpts[0][0] = np.array(c)
         for j in range(1, nmax+1):
             cpts[0][j] = self.dv_cpts(cpts[0][j-1], pv-(j-1))
         for i in range(1, nmax+1):
-            cpts[i][0] = self.du_cpts(cpts[i-1][0], pu-(i-1))
-            for j in range(1, nmax+1-i):
-                cpts[i][j] = self.dv_cpts(cpts[i][j-1], pv-(j-1))
+            for j in range(0, nmax+1-i):
+                cpts[i][j] = self.du_cpts(cpts[i-1][j], pu-(i-1))
         return cpts
         
