@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .flint import FloatLike
-from .cpoint import CPoint, cp_mag, cp_unit
+from .cpoint import CPoint, cp_mag, cp_unit, cp_cross, cp_2x2eigvals, cp_2x2eigsys
 
 class ParaSurf:
     """A parametric surface from u,v to R^3"""
@@ -49,12 +49,8 @@ class ParaSurf:
         res = self.d_tri(u,v,1)
         eu = res[1][0]
         ev = res[0][1]
-        # Do the cross-product by hand
-        n = np.array([
-            eu[1]*ev[2]-eu[2]*ev[1],
-            eu[2]*ev[0]-eu[0]*ev[1],
-            eu[0]*ev[1]-eu[0]*ev[1],
-        ], dtype=eu.dtype)
+        # Do the cross-product to get a vector normal to the surface
+        n = cp_cross(eu, ev)
         if cp_mag(n) == 0:
             raise ZeroDivisionError(f'degenerate point at (u,v)=({u},{v})')
         return cp_unit(n)
@@ -74,11 +70,7 @@ class ParaSurf:
         euv = res[1][1]
         evv = res[0][2]
         # Get the normal vector
-        n = np.array([
-            eu[1]*ev[2]-eu[2]*ev[1],
-            eu[2]*ev[0]-eu[0]*ev[1],
-            eu[0]*ev[1]-eu[0]*ev[1],
-        ], dtype=eu.dtype)
+        n = cp_cross(eu, ev)
         if cp_mag(n) == 0:
             raise ZeroDivisionError(f'Degenerate point at (u,v)=({u},{v}): ds/du and ds/dv are linearly dependent')
         n = cp_unit(n)
@@ -140,7 +132,7 @@ class ParaSurf:
         """
         if P is None:
             P = self.shape_op(u, v)
-        return np.linalg.eigvals(P)
+        return cp_2x2eigvals(P)
 
     def k_princ_vec(self, 
                     u: float, 
@@ -157,5 +149,5 @@ class ParaSurf:
         """
         if P is None:
             P = self.shape_op(u, v)
-        return np.linalg.eig(P)
+        return cp_2x2eigsys(P)
 

@@ -2,7 +2,7 @@
 """
 
 # Most operations will act on intervals for normal floats
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Tuple
 
 # Used for vectorizing functions that operate on CPoints
 import functools
@@ -85,6 +85,54 @@ def cp_unit(x: CPoint) -> CPoint:
         return x/xmag.reshape(sh)
     else:
         return x/xmag
+
+def cp_cross(a: CPoint, b: CPoint) -> CPoint:
+    """Evaluate the cross product of two CPoint vectors
+    @param a A numpy array of float-likes with shape (3,) 
+    @param b A numpy array of float-likes with shape (3,) 
+    @return The something
+    """
+    return np.array([
+        a[1]*b[2]-a[2]*b[1],
+        a[2]*b[0]-a[0]*b[2],
+        a[0]*b[1]-a[1]*b[0],
+    ])
+
+def cp_2x2eigvals(m: npt.NDArray[FloatLike]) -> npt.NDArray[FloatLike]:
+    """Evaluate the eigenvalues ONLY for a 2x2 matrix of float-likes
+    @param m A numpy array of float-likes with shape (2,2)
+    @return A numpy array of the eigenvalues of shape (2,)
+    """
+    htr = 0.5*(m[0,0]+m[1,1])
+    det = m[0,0]*m[1,1]-m[0,1]*m[1,0]
+    desc = htr*htr-det
+    if isinstance(desc, flint):
+        desc = desc.sqrt()
+    else:
+        desc = np.sqrt(desc)
+    return np.array([htr + desc, htr - desc])
+
+def cp_2x2eigsys(m: npt.NDArray[FloatLike]) -> Tuple[npt.NDArray[FloatLike], npt.NDArray[FloatLike]]:
+    """Evaluate the eigenvalues AND eigenvectors for a 2x2 matrix of float-likes
+    @param m A numpy array of float-likes with shape (2,2)
+    @return A tuple with (eigvals, eigvecs), where the eigvals is a numpy array of shape 
+    (2,) with the eigenvalues, and eigvecs is a numpy array of shape (2,2) with the
+    normalized corresponding eigenvectors.
+    """
+    # First get the eigenvalues
+    lp, lm = cp_2x2eigvals(m)
+    # Define for convenience
+    zero = 0.0*m[0,0]
+    one = 1.0 + zero
+    # If we not have degenerate eigenvalues solve the system of equations
+    if lp != lm:
+        vp = np.array([one, zero]) if m[0,0] == lp else cp_unit(np.array([m[0,1], -m[0,0]+lp]))
+        vm = np.array([one, zero]) if m[0,0] == lm else cp_unit(np.array([m[0,1], -m[0,0]+lm]))
+    # If we do have degenerate eigenvalues just choose [1,0], and [0,1]
+    else:
+        vp = np.array([one, zero])
+        vm = np.array([zero, one])
+    return np.array([lp, lm]), np.array([[vp[0],vp[1]], [vm[0],vm[1]]])
 
 def cp_vectorize(_func = None, *, ignore = ()):
     """Vectorize functions that have float arguments and return CPoints
