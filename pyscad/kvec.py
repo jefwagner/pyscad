@@ -63,25 +63,6 @@ class KnotVector:
         """Convenience function for extending a sequence beyond its limits with 0s""" 
         return 0*c[0] if (i < 0 or i >= len(c)) else c[i]    
 
-    @cp_vectorize(ignore=(0,1))
-    def deboor(self, c: Sequence[CPoint], p: int,  x: float) -> CPoint:
-        """Evaluate a b-spline on the knot-vector at a parametric
-        @param c The sequence of control points
-        @param p The degree of the b-spline 
-        @param x The value of parametric argument to the b-spline
-        @return The D-dimensional point on the b-spline. Note: if x is outside the range
-        of the knot vector it is evaluated using the b-spline basis polynomial for the
-        first or last non-zero interval in the knot-vector.
-        """
-        k = self.k(x)
-        q = np.array([self.q0(c, k-r) for r in range(p,-1,-1)])
-        for r in range(p):
-            for j in range(p,r,-1):
-                l, m = np.clip((j+k-p, j+k-r),0,len(self.t)-1)
-                a = (x-self.t[l])/(self.t[m]-self.t[l])
-                q[j] = a*q[j] + (1-a)*q[j-1]
-        return q[p]
-
     def deboor_nv(self, c: Sequence[CPoint], p: int,  x: float) -> CPoint:
         """Evaluate a b-spline on the knot-vector at a parametric Non-Vectorized
         @param c The sequence of control points
@@ -99,6 +80,18 @@ class KnotVector:
                 a = (x-self.t[l])/(self.t[m]-self.t[l])
                 q[j] = a*q[j] + (1-a)*q[j-1]
         return q[p]
+
+    @cp_vectorize(ignore=(0,1))
+    def deboor(self, c: Sequence[CPoint], p: int,  x: float) -> CPoint:
+        """Evaluate a b-spline on the knot-vector at a parametric
+        @param c The sequence of control points
+        @param p The degree of the b-spline 
+        @param x The value of parametric argument to the b-spline
+        @return The D-dimensional point on the b-spline. Note: if x is outside the range
+        of the knot vector it is evaluated using the b-spline basis polynomial for the
+        first or last non-zero interval in the knot-vector.
+        """
+        return self.deboor_nv(c, p, x)
 
     def d_cpts(self, c: Sequence[CPoint], p: int) -> npt.NDArray[CPoint]:
         """Create the new control points for the first derivative b-spline

@@ -115,20 +115,103 @@ class TestSurfProp(unittest.TestCase):
 
     def test_normal_ufunc(self):
         """Validate the normal vector for multiple points on the torus"""
-        raise NotImplemented
+        upts = [0,1,0,1]
+        vpts = [0,0,1,1]
+        tnorms = v_flint([
+                    [1,0,0],
+                    [0,1,0],
+                    [0,0,1],
+                    [0,0,1],
+                 ])
+        ns = self.torus.normal(upts, vpts)
+        for i, tn in enumerate(tnorms):
+            self.assertEqual(np.dot(ns[i], tn), 1.0)
 
     def test_k_mean(self):
         """Validate the mean curvature for the torus"""
-        raise NotImplemented
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        Hs = [
+            flint.frac(-2,3),
+            flint.frac(-2,3),
+            flint.frac(-1,2),
+            flint.frac(-1,2)
+        ]
+        for uv, H in zip(uvpts,Hs):
+            k_mean = self.torus.k_mean(*uv)
+            self.assertEqual(k_mean, H)
+
+    def test_k_mean_ufunc(self):
+        """Validate the mean curvature for the torus"""
+        upts = [0,1,0,1]
+        vpts = [0,0,1,1]
+        Hs = [
+            flint.frac(-2,3),
+            flint.frac(-2,3),
+            flint.frac(-1,2),
+            flint.frac(-1,2)
+        ]
+        k_means = self.torus.k_mean(upts, vpts)
+        for i, H in enumerate(Hs):
+            self.assertEqual(k_means[i], H)
 
     def test_k_gaussian(self):
         """Validate the Gaussian curvature for the torus"""
-        raise NotImplemented
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        Ks = [
+            flint.frac(1,3),
+            flint.frac(1,3),
+            flint(0),
+            flint(0)
+        ]
+        for uv, K in zip(uvpts,Ks):
+            k_g = self.torus.k_gaussian(*uv)
+            self.assertTrue(abs(k_g-K) < 1.e-7)
     
+    def test_k_gaussian_ufunc(self):
+        """Validate the Gaussian curvature for the torus"""
+        upts = [0,1,0,1]
+        vpts = [0,0,1,1]
+        Ks = [
+            flint.frac(1,3),
+            flint.frac(1,3),
+            flint(0),
+            flint(0)
+        ]
+        k_g = self.torus.k_gaussian(upts, vpts)
+        for i, K in enumerate(Ks):
+            self.assertTrue(abs(k_g[i]-K) < 1.e-7)
+
     def test_k_principal(self):
         """Validate the principle curvatures"""
-        raise NotImplemented
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        kps = [
+            [flint.frac(-1,3),flint(-1)],
+            [flint.frac(-1,3),flint(-1)],
+            [flint(0),flint(-1)],
+            [flint(0),flint(-1)],
+        ]
+        for uv, kp in zip(uvpts, kps):
+            kpc = self.torus.k_principal(*uv)
+            self.assertTrue(abs(kpc[0]-kp[0]) < 1.e-7)
+            self.assertTrue(abs(kpc[1]-kp[1]) < 1.e-7)
     
     def test_k_princ_vec(self):
         """Validate the principle curvatures and eigenvectors"""
-        raise NotImplemented
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        kps = [
+            [flint.frac(-1,3),flint(-1)],
+            [flint.frac(-1,3),flint(-1)],
+            [flint(0),flint(-1)],
+            [flint(0),flint(-1)],
+        ]
+        evs = np.array([
+            [[1,0],[0,-1]],
+            [[1,0],[0,-1]],
+            [[1,0],[0,-1]],
+            [[1,0],[0,-1]],
+        ], dtype=np.float64)
+        for uv, kp, ev in zip(uvpts, kps, evs):
+            kpc, evc = self.torus.k_princ_vec(*uv)
+            self.assertTrue(abs(kpc[0]-kp[0]) < 1.e-7)
+            self.assertTrue(abs(kpc[1]-kp[1]) < 1.e-7)
+            self.assertTrue(np.allclose(ev,evc.astype(float)))

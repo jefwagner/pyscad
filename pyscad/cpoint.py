@@ -113,11 +113,10 @@ def cp_2x2eigvals(m: npt.NDArray[FloatLike]) -> npt.NDArray[FloatLike]:
     return np.array([htr + desc, htr - desc])
 
 def cp_2x2eigsys(m: npt.NDArray[FloatLike]) -> Tuple[npt.NDArray[FloatLike], npt.NDArray[FloatLike]]:
-    """Evaluate the eigenvalues AND eigenvectors for a 2x2 matrix of float-likes
+    """Evaluate the eigenvectors for a 2x2 matrix of float-likes
     @param m A numpy array of float-likes with shape (2,2)
-    @return A tuple with (eigvals, eigvecs), where the eigvals is a numpy array of shape 
-    (2,) with the eigenvalues, and eigvecs is a numpy array of shape (2,2) with the
-    normalized corresponding eigenvectors.
+    @return A tuple with (eigvals, eigvecs) where eigvals is a (2,) numpy array with the 
+    eigenvalues and eigvecs is a (2,2) numpy array with the normalized eigenvectors.
     """
     # First get the eigenvalues
     lp, lm = cp_2x2eigvals(m)
@@ -168,8 +167,8 @@ def cp_vectorize(_func = None, *, ignore = ()):
                 vargs = [varg if i in ign else varg[0] for i, varg in enumerate(vec_args)]
                 first = func(*vargs)
                 if isinstance(first, np.ndarray):
-                    cl = len(first)
-                    res = np.empty((num,cl), dtype=first.dtype)
+                    cl = first.shape
+                    res = np.empty([num]+list(cl), dtype=first.dtype)
                 else:
                     dtype = flint if isinstance(first, flint) else float
                     res = np.empty((num,), dtype=dtype)
@@ -180,7 +179,7 @@ def cp_vectorize(_func = None, *, ignore = ()):
                     res[j] = func(*vargs)
                 # Then reshape the output to look like the input
                 if isinstance(first, np.ndarray):
-                    return res.reshape(list(sh)+[cl])
+                    return res.reshape(list(sh)+list(cl))
                 else:
                     return res.reshape(sh)
         return wrapper

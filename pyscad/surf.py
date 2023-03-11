@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .flint import FloatLike
-from .cpoint import CPoint, cp_mag, cp_unit, cp_cross, cp_2x2eigvals, cp_2x2eigsys
+from .cpoint import *
 
 class ParaSurf:
     """A parametric surface from u,v to R^3"""
@@ -37,6 +37,7 @@ class ParaSurf:
         """
         return [[self.d(u,v,i,j) for j in range(nmax+1-i)] for i in range(nmax+1)]
 
+    @cp_vectorize
     def normal(self, u: float, v: float) -> CPoint:
         """Evaluate a unit normal vector to the surface
         @param u The u parameter
@@ -89,6 +90,7 @@ class ParaSurf:
         # Return the shape operator
         return np.dot(sff, fff_inv)
 
+    @cp_vectorize(ignore=(2,))
     def k_mean(self, 
                u: float, 
                v: float, 
@@ -104,6 +106,7 @@ class ParaSurf:
             P = self.shape_op(u, v)
         return 0.5*(P[0,0]+P[1,1])
  
+    @cp_vectorize(ignore=(2,))
     def k_gaussian(self, 
                    u: float, 
                    v: float, 
