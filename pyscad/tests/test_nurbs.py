@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from ..flint import v_flint
+from ..flint import flint, v_flint
 from ..cpoint import cp_mag
 from ..curves import ParaCurve
 from ..surf import ParaSurf
@@ -54,7 +54,7 @@ class TestInit(unittest.TestCase):
         """Validate the class types and internal members for a surface"""
         raise NotImplementedError()
 
-class TestEval(unittest.TestCase):
+class TestCurveEval(unittest.TestCase):
     """Test evaluation of the curve and derivatives"""
 
     def setUp(self):
@@ -94,3 +94,119 @@ class TestEval(unittest.TestCase):
         for kappa in kappas:
             self.assertEqual(1.0, kappa)
 
+
+class TestSurfEval(unittest.TestCase):
+    """Test the evaluation of the surface and derivatives"""
+
+    def setUp(self):
+        """All test will be done with a torus section"""
+        self.tc = NurbsSurf(ts_c, ts_w, ts_pu, ts_pv, ts_tu, ts_tv)
+
+    def test_call_scalar(self):
+        """Validate evaluation of the surface for scalar arguments"""
+        uvpts = [[0.0,0.0],
+                 [0.5,0.0],
+                 [0.0,0.5]]
+        tpts = [[3.0, 0, 0],
+                [3.0/np.sqrt(2),3.0/np.sqrt(2),0],
+                [2+1/np.sqrt(2),0,1/np.sqrt(2)]]
+        for uv, tpt in zip(uvpts, tpts):
+            cpt = self.tc(*uv)
+            self.assertTrue(np.allclose(tpt, cpt.astype(float)))
+        
+    def test_call_array(self):
+        """Validate evaluation of the surface for array arguments"""
+        u = [0,0.5]
+        v = [0,0.5]
+        U,V = np.meshgrid(u,v)
+        tpts = [[[3.0,0,0], # (0,0)
+                [3.0/np.sqrt(2),3.0/np.sqrt(2),0]], #(0.5,0)
+                [[2+1/np.sqrt(2),0,1/np.sqrt(2)], #(0,0.5)
+                 [np.sqrt(2)+1/2,np.sqrt(2)+1/2,1/np.sqrt(2)]]] # (0.5,0.5)
+        cpts = self.tc(U,V).astype(float)
+        self.assertTrue(np.allclose(tpts, cpts))
+    
+    def test_normal_scalar(self):
+        """Validate evaluation of surface normal for scalar arguments"""
+        uvpts = [[0.0,0.0],
+                 [0.5,0.0],
+                 [0.0,0.5]]
+        tns = [[1.0, 0, 0],
+                [1/np.sqrt(2),1/np.sqrt(2),0],
+                [1/np.sqrt(2),0,1/np.sqrt(2)]]
+        for uv, tn in zip(uvpts, tns):
+            cn = self.tc.normal(*uv)
+            self.assertTrue(np.allclose(tn, cn.astype(float)))
+
+    def test_normal_array(self):
+        """Validate evaluation of surface normal for scalar arguments"""
+        u = [0,0.5]
+        v = [0,0.5]
+        U,V = np.meshgrid(u,v)
+        tns = [[[1.0,0,0], # (0,0)
+                [1/np.sqrt(2),1/np.sqrt(2),0]], #(0.5,0)
+                [[1/np.sqrt(2),0,1/np.sqrt(2)], #(0,0.5)
+                 [1/2,1/2,1/np.sqrt(2)]]] # (0.5,0.5)
+        cns = self.tc.normal(U,V).astype(float)
+        self.assertTrue(np.allclose(tns, cns))
+
+    def test_mean_curvature(self):
+        """Validate evaluation of mean curvature"""
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        Hs = [
+            flint.frac(-2,3),
+            flint.frac(-2,3),
+            flint.frac(-1,2),
+            flint.frac(-1,2)
+        ]
+        for uv, H in zip(uvpts,Hs):
+            k_mean = self.tc.k_mean(*uv)
+            self.assertEqual(k_mean, H)
+
+    def test_gaussian_curvature(self):
+        """Validate evaluation of gaussian curvature"""
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        Ks = [
+            flint.frac(1,3),
+            flint.frac(1,3),
+            flint(0),
+            flint(0)
+        ]
+        for uv, K in zip(uvpts,Ks):
+            k_g = self.tc.k_gaussian(*uv)
+            self.assertTrue(abs(k_g-K) < 1.e-7)
+
+    def test_principal_curvatures(self):
+        """Validate the principle curvatures"""
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        kps = [
+            [flint.frac(-1,3),flint(-1)],
+            [flint.frac(-1,3),flint(-1)],
+            [flint(0),flint(-1)],
+            [flint(0),flint(-1)],
+        ]
+        for uv, kp in zip(uvpts, kps):
+            kpc = self.tc.k_principal(*uv)
+            self.assertTrue(abs(kpc[0]-kp[0]) < 1.e-7)
+            self.assertTrue(abs(kpc[1]-kp[1]) < 1.e-7)
+    
+    def test_principal_curvature_directions(self):
+        """Validate the principle curvatures and eigenvectors"""
+        uvpts = [[0,0],[1,0],[0,1],[1,1]]
+        kps = [
+            [flint.frac(-1,3),flint(-1)],
+            [flint.frac(-1,3),flint(-1)],
+            [flint(0),flint(-1)],
+            [flint(0),flint(-1)],
+        ]
+        evs = np.array([
+            [[1,0],[0,-1]],
+            [[1,0],[0,-1]],
+            [[1,0],[0,-1]],
+            [[1,0],[0,-1]],
+        ], dtype=np.float64)
+        for uv, kp, ev in zip(uvpts, kps, evs):
+            kpc, evc = self.tc.k_princ_vec(*uv)
+            self.assertTrue(abs(kpc[0]-kp[0]) < 1.e-7)
+            self.assertTrue(abs(kpc[1]-kp[1]) < 1.e-7)
+            self.assertTrue(np.allclose(ev,evc.astype(float)))

@@ -160,7 +160,7 @@ class NurbsSurf(ParaSurf):
         w = [[None for _ in range(nv+1)] for _ in range(nu+1)]
         s = [[None for _ in range(nv+1)] for _ in range(nu+1)]
         c[0][0] = self.t.deboor(cpts[0][0], self.pu, self.pv, u, v)
-        w[0][0] = self.t.deboor(cpts[0][0], self.pu, self.pv, u, v)
+        w[0][0] = self.t.deboor(wpts[0][0], self.pu, self.pv, u, v)
         s[0][0] = c[0][0]/w[0][0]
         for j in range(1, nv+1):
             c[0][j] = self.t.deboor(cpts[0][j], self.pu, self.pv-j, u, v)
@@ -172,11 +172,11 @@ class NurbsSurf(ParaSurf):
         for i in range(1, nu+1):
             for j in range(nv+1):
                 c[i][j] = self.t.deboor(cpts[i][j], self.pu-i, self.pv-j, u, v)
-                w[i][j] = self.t.deboor(cpts[i][j], self.pu-i, self.pv-j, u, v)
+                w[i][j] = self.t.deboor(wpts[i][j], self.pu-i, self.pv-j, u, v)
                 s[i][j] = c[i][j]
                 for ii in range(1, i+1):
                     for jj in range(j+1):
-                        term = self._binom(i, ii)*self._binom(j, jj)
+                        term = self._binom[i, ii]*self._binom[j, jj]
                         term *= s[i-ii][j-jj]*w[ii][jj]
                         s[i][j] -= term
                 s[i][j] /= w[0][0]
@@ -190,14 +190,13 @@ class NurbsSurf(ParaSurf):
         @return A triangular array of the surface and its partial derivatives
         evaluated at the parametric point (u,v). 
         """
-        raise NotImplementedError()
-        cpts = self.t.d_cpts_list(self.w*self.c, self.pu, self.pv, nmax)
-        wpts = self.t.d_cpts_list(self.w, self.pu, self.pv, nmax)
-        c = [[None for _ in range(nmax+1-i)] for i in range(nmax-1)]
-        w = [[None for _ in range(nmax+1-i)] for i in range(nmax-1)]
-        s = [[None for _ in range(nmax+1-i)] for i in range(nmax-1)]
+        cpts = self.t.d_cpts_tri(self.w*self.c, self.pu, self.pv, nmax)
+        wpts = self.t.d_cpts_tri(self.w, self.pu, self.pv, nmax)
+        c = [[None for _ in range(nmax+1-i)] for i in range(nmax+1)]
+        w = [[None for _ in range(nmax+1-i)] for i in range(nmax+1)]
+        s = [[None for _ in range(nmax+1-i)] for i in range(nmax+1)]
         c[0][0] = self.t.deboor(cpts[0][0], self.pu, self.pv, u, v)
-        w[0][0] = self.t.deboor(cpts[0][0], self.pu, self.pv, u, v)
+        w[0][0] = self.t.deboor(wpts[0][0], self.pu, self.pv, u, v)
         s[0][0] = c[0][0]/w[0][0]
         for j in range(1, nmax+1):
             c[0][j] = self.t.deboor(cpts[0][j], self.pu, self.pv-j, u, v)
@@ -209,11 +208,11 @@ class NurbsSurf(ParaSurf):
         for i in range(1, nmax+1):
             for j in range(nmax+1-i):
                 c[i][j] = self.t.deboor(cpts[i][j], self.pu-i, self.pv-j, u, v)
-                w[i][j] = self.t.deboor(cpts[i][j], self.pu-i, self.pv-j, u, v)
+                w[i][j] = self.t.deboor(wpts[i][j], self.pu-i, self.pv-j, u, v)
                 s[i][j] = c[i][j]
                 for ii in range(1, i+1):
                     for jj in range(j+1):
-                        term = self._binom(i, ii)*self._binom(j, jj)
+                        term = self._binom[i, ii]*self._binom[j, jj]
                         term *= s[i-ii][j-jj]*w[ii][jj]
                         s[i][j] -= term
                 s[i][j] /= w[0][0]
