@@ -65,84 +65,29 @@ normal data, and the .stl will only have triangles.
 There is a lot to do before this project is ready for use for anything. Below is a to-do
 list of what has already been done, and what is yet to be done.
 
-Note: I've removed some of the vectorized stuff from the evaluations because I think I
-did it wrong before. I'm going to try to vectorize by hand and see where I get.
+- [x] Rounded floating point numbers [100% ]
+
+Note: I have implemented a 'working' version of flint objects in python, with two main
+dissadvantages as I see them right now.
+1. There are several matplotlib routines (plot_surface, quiver) that do not work with the floating pointer interval (flint) objects. They seem to all fail on calls to 'isfinite' and I can't find any documentation on how to provide an implementation that these functions would use (i.e. there is no __isfinite__ magic method that lets you override the behavior like there are for other methods).
+2. The performance is horrible!
+
 Ultimately I want to write an custom extension for numpy to support a rounded floating
 point interval d-type. I have not found any good references yet, but I did find a good
 example [in the quaternion project](https://github.com/martinling/numpy_quaternion)
 
-- [ ] floating point interval
-    - [x] flint arithmetic
-    - [ ] flint elementary functions
-    - [x] tests
-    - [ ] docs
-- [ ] curves :
-    - [ ] b-spline
-        - [x] evaluations
-        - [x] derivatives
-        - [ ] basis functions : I think I'm remove this
-        - [x] docs
-        - [ ] tests
-    - [ ] nurbs curves
-        - [x] evaluation
-        - [x] derivatives
-        - [x] docs
-        - [ ] tests
-    - [ ] diff geo properties
-        - [ ] arc length
-        - [ ] tangent vec
-        - [ ] curvature
-        - [x] docs
-        - [ ] test
-    - [ ] algorithms
-        - [ ] midpoint
-        - [ ] plane intersection
-        - [ ] nearest point
-        - [ ] docs
-        - [ ] tests
-- [ ] surface
-    - [ ] nurbs surface 
-        - [ ] evaluation
-        - [ ] gradient and jacobian
-        - [ ] docs
-        - [ ] tests
-    - [ ] diff geo properties
-        - [ ] tangent plane
-        - [ ] principle curvatures
-        - [ ] docs
-        - [ ] tests
-    - [ ] algorithms
-        - [ ] line intersection
-        - [ ] nearest point
-        - [ ] curve intersection
-        - [ ] surface-surface intersection
-        - [ ] docs
-        - [ ] tests
+- [x] Parametric curves and surfaces
+
+Note: I have defined an abstract base class for both and defined many useful methods
+using these base classes, and I have implemented b-spline and NURBS versions for both
+curves and surfaces. I think I will also need to define 'ruled' and 'rotated' surfaces as well to support extrusions and solids of rotation.
+
 - [ ] b-rep
-    - [ ] implementation
-        - [ ] faces
-            - [ ] surface
-            - [ ] edge-loop
-        - [ ] edges
-    - [ ] mesh generation
-    - [ ] docs
-    - [ ] tests
+
+Note: I have started the idea-work for how to structure the objects themselves. I
+believe I know how I'm going to lay out the objects, objects, and which methods they will need. However, I'm not exactly sure how I'm going to implement all the methods.
+There is one method in particular I am struggling with: How can (a) find and (b) definte for efficient calcuation the curves that result from intersecting two faces?
+
 - [ ] CSG
-    - [ ] transformations
-        - [ ] translation
-        - [ ] rotation
-        - [ ] scale
-        - [ ] singular value decomposition
-    - [ ] primitives
-        - [ ] box
-        - [ ] sphere
-        - [ ] cylinder
-        - [ ] cone
-        - [ ] extrusion
-        - [ ] solid of rotation
-    - [ ] operations
-        - [ ] union
-        - [ ] difference
-        - [ ] intersection
-    - [ ] docs
-    - [ ] tests
+
+Note: No real work as been started yet

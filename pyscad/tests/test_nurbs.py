@@ -52,7 +52,13 @@ class TestInit(unittest.TestCase):
 
     def test_surf(self):
         """Validate the class types and internal members for a surface"""
-        raise NotImplementedError()
+        ts = NurbsSurf(ts_c, ts_w, ts_pu, ts_pv, ts_tu, ts_tv)
+        self.assertIsInstance(ts, ParaSurf)
+        self.assertIsInstance(ts, NurbsSurf)
+        self.assertIsInstance(ts.c, np.ndarray)
+        self.assertEqual(ts.c.shape, (3,3,3))
+        self.assertIsInstance(ts.w, np.ndarray)
+        self.assertEqual(ts.w.shape, (3,3,1))
 
 class TestCurveEval(unittest.TestCase):
     """Test evaluation of the curve and derivatives"""
