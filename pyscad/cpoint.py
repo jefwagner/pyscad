@@ -1,4 +1,4 @@
-"""@file Control Point convenience functions
+"""@file cpoint.py Control Point convenience functions
 
 This file is part of pyscad.
 

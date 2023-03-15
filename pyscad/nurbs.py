@@ -1,4 +1,4 @@
-"""@file Non-Uniform Rational Basis Spline (NURBS) curves and surfaces
+"""@file nurbs.py Non-Uniform Rational Basis Spline (NURBS) curves and surfaces
 
 This file is part of pyscad.
 

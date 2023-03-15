@@ -1,4 +1,4 @@
-"""@file Exporting the public parts of the module
+"""@file __init__.py Exporting the public parts of the module
 
 This file is part of pyscad.
 

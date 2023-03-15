@@ -1,4 +1,4 @@
-"""@file Boundary Representation
+"""@file brep.py Boundary Representation
 
 This file is part of pyscad.
 

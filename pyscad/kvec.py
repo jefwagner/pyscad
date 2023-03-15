@@ -1,5 +1,5 @@
-"""@file One and two dimensional knot vectors for evaluation of basis spline curves and
-surfaces.
+"""@file kvec.py One and two dimensional knot vectors for evaluation of basis spline 
+curves and surfaces.
 
 This file is part of pyscad.
 

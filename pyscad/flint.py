@@ -1,4 +1,4 @@
-"""@file Floating point rounded interval arithmetic
+"""@file flint.py Floating point rounded interval arithmetic
 Implements a new numeric class for floating point intervals
 
 This file is part of pyscad.

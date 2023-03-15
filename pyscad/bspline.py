@@ -1,4 +1,4 @@
-"""@file Basis spline curves and surfaces
+"""@file bspline.py Basis spline curves and surfaces
 
 This file is part of pyscad.
 

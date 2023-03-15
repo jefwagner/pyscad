@@ -1,4 +1,4 @@
-"""@file Differential geometry of curves
+"""@file surf.py Abstract base class for parametric surfaces
 
 This file is part of pyscad.
 
