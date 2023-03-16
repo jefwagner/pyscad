@@ -1,3 +1,6 @@
+# WARNING
+**Project still under active development - does not work**
+
 # PyScad
 Basic idea: make an OpenSCAD like package for doing 3-d solid design in python.
  
