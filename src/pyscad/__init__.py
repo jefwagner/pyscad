@@ -14,6 +14,8 @@ You should have received a copy of the GNU General Public License along with pys
 not, see <https://www.gnu.org/licenses/>.
 """
 
+from .csg import *
+
 # # Export floating point interval objects and the v_flint helper function
 # from .flint import flint, v_flint
 # # Export the ParaCurve abstract base class

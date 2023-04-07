@@ -4,6 +4,8 @@ Contains the constructive solid geometry CSG structures
 """
 # Include copyright statement
 
+from .geo import *
+
 class Csg:
     """Constructive Solid Geometry (CSG) abstract base class"""
     t: list[Transform] # All CSG objects can have their own list of transforms
@@ -49,7 +51,7 @@ class Op(Csg):
         """Create a new Op object"""
         for child in children:
             if not isinstance(child, Csg):
-                raise ValueError(f'CSG operators only act CSG objects, {child}')
+                raise ValueError(f'CSG operators only act CSG objects')
             self.c.append(child)
 
 class Union(Op):
