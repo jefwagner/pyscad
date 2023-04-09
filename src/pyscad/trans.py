@@ -1,37 +1,30 @@
-from typing import Union, Any, Sequence, Optional
-import numpy as np
+## @file trans.py 
+"""\
+Defines the affine transform classes to act on 2D and 3D vectors.
+"""
+# Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
+#
+# This file is part of pyscad.
+#
+# pyscad is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# pyscad is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# pyscad. If not, see <https://www.gnu.org/licenses/>.
+
+from typing import Union, Optional
 import numpy.typing as npt
 
-import collections.abc
-import functools
-
+import numpy as np
 from flint import flint
 
-Num = Union[float, flint]
-Num.__doc__ = """Generic number as float or flint to be used for type hints"""
-def is_num(x: Any) -> bool:
-    """Test if input is a generic number"""
-    return isinstance(x, (int, float, flint))
-
-Vec = Sequence[Num]
-Vec.__doc__ = """Generic vector as sequence of numbers to be used for type hints"""
-def is_vec(v: Any, length: Optional[int] = None) -> bool:
-    """Test if input is a generic vector"""
-    try:
-        a = (len(v) in [1, 2,3]) if length is None else (len(v) == length)
-        if not a:
-            return False
-        if isinstance(v, np.ndarray):
-            return v.dtype in (int, float, flint)
-        return functools.reduce(lambda a, b: a and b, map(is_num, v))
-    except:
-        return False
-
-Point = Union[Num, Vec]
-Point.__doc__ = """Generic point as number or vector to be used for type hints"""
-def is_point(a: Any) -> bool:
-    """Test if input is a generic point"""
-    return is_num(a) or is_vec(a)
+from .types import *
 
 
 class Transform:
@@ -42,7 +35,7 @@ class Transform:
     def __init__(self, dim: int = 3):
         """Create a new transform"""
         if dim not in [2,3]:
-            raise ValueError()
+            raise ValueError("Transforms must act on 2 or 3 dimensional vectors")
         self.m = np.eye(dim, dtype=flint)
         self.v = np.zeros(dim, dtype=flint)
 
@@ -67,18 +60,21 @@ class Transform:
     def __eq__(self, other: 'Transform') -> bool:
         """Compare if two transformations are equivalent"""
         if not isinstance(other, Transform):
-            raise ValueError("Can only compare transforms")
+            raise TypeError("Can only compare transforms")
         if len(self.v) != len(other.v):
             return False
         return np.alltrue(self.m == other.m) and np.alltrue(self.v == other.v)
 
+    def json(self) -> dict:
+        """Build a python dict for JSON serialization"""
+        trans_dict = dict(name=self.__class__.__name__)
+        
 
 class Scale(Transform):
     """Scale"""
 
     def __init__(self, s: Union[Num, Vec]):
         """Create a new Scale transformations
-
         @param s If s is a scalar then create a uniform 3D scaling
         transformation, else if s is a vector then scales the each axis
         according to the vectors components. The only way to obtain a 2D uniform
@@ -91,7 +87,7 @@ class Scale(Transform):
             self.m = np.diag(s).astype(flint)
             self.v = np.zeros(len(s), dtype=flint)
         else:
-            raise ValueError("Scale must be set with a scalar or vector")
+            raise TypeError("Scale must be set with a scalar or vector")
 
 
 class Translate(Transform):
@@ -102,7 +98,7 @@ class Translate(Transform):
             self.m = np.eye(len(dx), dtype=flint)
             self.v = np.array(dx, dtype=flint)
         else:
-            raise ValueError("Translate must be set with a vector")
+            raise TypeError("Translate must be set with a vector")
 
 
 class Rotate(Transform):
@@ -110,7 +106,7 @@ class Rotate(Transform):
 
     def __init__(self, angle: Num, axis: Optional[Vec] = None):
         if not is_num(angle):
-            raise ValueError("Angle must be a number")
+            raise TypeError("Angle must be a number")
         th = flint(angle)
         if axis is None:
             self.m = np.array([
@@ -129,4 +125,4 @@ class Rotate(Transform):
             ], dtype=flint)
             self.v = np.zeros(3, dtype=flint)
         else:
-            raise ValueError("Axis must be a 3 dimensional vector")
+            raise TypeError("Axis must be a 3 dimensional vector")
