@@ -1,103 +1,102 @@
-## @file csg.py CSG structures
+## @file csg.py
 """\
-Contains the constructive solid geometry CSG structures
+Contains the constructive solid geometry (CSG) base class and methods
 """
-# Include copyright statement
+# Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
+#
+# This file is part of pyscad.
+#
+# pyscad is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# pyscad is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-from .geo import *
+from typing import Union, Any, Optional
+
+from .types import *
+from .trans import Transform, Scale, Translate, Rotate
+
 
 class Csg:
     """Constructive Solid Geometry (CSG) abstract base class"""
-    t: list[Transform] # All CSG objects can have their own list of transforms
-    # ToDo: Add all expected methods
+    trans: list[Transform] # All CSG objects can have their own list of transforms
+    params: list[str]
+    meta: dict(str, Any)
 
-    def scale(self, size):
+    def __init__(self):
+        self.trans = []
+        self.params = []
+        self.meta = {}
+
+    #
+    # Method for adding transformations to a CSG object
+    #
+    # All methods return a copy of self so that they can be chained together
+    # using a builder pattern.`
+    #
+    def scale(self, size: Union[Number, Vec]) -> 'Csg':
         """Apply a scaling transformation"""
-        self.t.append(Scale(size))
+        self.trans.append(Scale(size))
+        return self
 
-    def trans(self, dx):
+    def trans(self, dx: Vec) -> 'Csg':
         """Apply a translation transformation"""
-        self.t.append(Translate(dx))
+        self.trans.append(Translate(dx))
+        return self
 
-    def rot(self, axis, angle):
+    def rot(self, angle: Num, angle: Optional[Vec] = None) -> 'Csg':
         """Apply a rotation transformation around arbitrary axis"""
-        self.t.append(Rotate(axis, angle))
+        self.trans.append(Rotate(angle, angle))
+        return self
     
-    def rotx(self, angle):
+    def rotx(self, angle: Num) -> 'Csg':
         """Apply a rotation transformation around the x-axis"""
-        self.t.append(Rotate((1,0,0), angle))
+        self.trans.append(Rotate(angle, (1,0,0)))
+        return self
 
-    def roty(self, angle):
+    def roty(self, angle: Num) -> 'Csg':
         """Apply a rotation transformation around the y-axis"""
-        self.t.append(Rotate((0,1,0), angle))
+        self.trans.append(Rotate(angle, (0,1,0)))
+        return self
 
-    def rotz(self, angle):
+    def rotz(self, angle: Num) -> 'Csg':
         """Apply a rotation transformation around the z-axis"""
-        self.t.append(Rotate((0,0,1), angle))
+        self.trans.append(Rotate(angle, (0,0,1)))
+        return self
 
-    def rotzxz(self, alpha, beta, gamma):
+    def rotzxz(self, alpha: Num, beta: Num, gamma: Num) -> 'Csg':
         """Apply rotation transformations using ZXZ euler angles"""
-        self.t.extend([
+        self.trans.extend([
             Rotate((0,0,1), alpha),
             Rotate((1,0,0), beta),
             Rotate((0,0,1), gamma)
         ])
+        return self
 
-class Op(Csg):
-    """CSG Operator abstract base class"""
-    c: list[Csg]
- 
-    def __init__(self, *children):
-        """Create a new Op object"""
-        for child in children:
-            if not isinstance(child, Csg):
-                raise ValueError(f'CSG operators only act CSG objects')
-            self.c.append(child)
+    def add_metadata(self, key: str, value: Any) -> 'Csg':
+        """Add metadata to the CSG object"""
+        self.meta[key] = value
+        return self
 
-class Union(Op):
-    """A CSG Union operator"""
-    ...
-
-class Diff(Op):
-    """A CSG Difference operator"""
-    ...
-
-class IntXn(Op):
-    """A CSG Intersection operator"""
-    ...
-
-
-class Prim(Csg):
-    """CSG Primitive abstract base class"""
-
-class Sphere(Prim):
-    """A CSG Sphere primitive"""
-
-    def __init__(self, radius = 1, position = (0,0,0)):
-        """Create a new Sphere object"""
-        self.t = [Scale(radius), Translate(position)]
-
-class Box(Prim):
-    """A CSG Box primitive"""
-
-    def __init__(self, size = 1, position = (0,0,0)):
-        """Create a new Box object"""
-        self.t = [Scale(size), Translate(position)]
-
-class Cyl(Prim):
-    """A CSG Cylinder primitive"""
-
-    def __init__(self, height = 1, radius = 1, position = (0,0,0)):
-        self.t = [
-            Scale(radius, radius, height),
-            Translate(position)
-        ]
-
-class Cone(Prim):
-    """A CSG Cone primitive"""
-
-    def __init__(self, height = 1, radius = 1, position = (0,0,0)):
-        self.t = [
-            Scale(radius, radius, height),
-            Translate(position)
-        ]
+    def json(self):
+        """Build a python dict for JSON serialization"""
+        # Start off with object type
+        csg_dict = dict(name=self.__class__.__name__,)
+        # Next list all children
+        if hasattr(self, 'children'):
+            csg_dict['children'] = [child.json() for child in self.children]
+        # Then include the list of transforms
+        csg_dict['trans'] = [t.json() for t in self.trans]
+        # Then include all object specific parameters
+        for key in self.params:
+            csg_dict[key] = getattr(self, key)
+        # Finally include meta-data
+        csg_dict['meta'] = self.meta
+        return csg_dict
