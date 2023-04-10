@@ -89,14 +89,11 @@ class Csg:
         """Build a python dict for JSON serialization"""
         # Start off with object type
         csg_dict = dict(name=self.__class__.__name__,)
-        # Next list all children
+        # Then Include the list of transforms
+        csg_dict['trans'] = [t.json() for t in self.trans]
+        # Next list all children and/or list of object specific parameters
         if hasattr(self, 'children'):
             csg_dict['children'] = [child.json() for child in self.children]
-        # Then include the list of transforms
-        csg_dict['trans'] = [t.json() for t in self.trans]
-        # Then include all object specific parameters
-        for key in self.params:
-            csg_dict[key] = getattr(self, key)
         # Finally include meta-data
         csg_dict['meta'] = self.meta
         return csg_dict

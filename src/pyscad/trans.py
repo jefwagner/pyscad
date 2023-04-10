@@ -39,6 +39,27 @@ class Transform:
         self.m = np.eye(dim, dtype=flint)
         self.v = np.zeros(dim, dtype=flint)
 
+    @classmethod
+    def from_arrays(cls, m: npt.NDArray[flint], v: npt.NDArray[flint]):
+        """Create a transform from affine transformation matrices"""
+        t = cls.__new__(cls)
+        if not isinstance(m, np.ndarray) or not isinstance(v, np.ndarray):
+            raise TypeError("Can only input numpy arrays")
+        if m.dtype != flint or v.dtype != flint:
+            raise TypeError("Can only input numpy arrays")
+        t.m = m.copy()
+        t.v = v.copy()
+        if not t.verify():
+            raise ValueError("Input matrices did not satisfy constrains")
+        return t
+
+    def verify(self):
+        """Verify the matrices obey constraints"""
+        msh = self.m.shape
+        vsh = self.v.shape
+        return ((len(msh) == 2) and (len(vsh) == 1) and
+                (msh[0] == msh[1]) and (msh[0] == vsh[0]) and (msh[0] in [2,3]))
+
     def __len__(self):
         """The dimension of vectors the transform act on"""
         return len(self.v)
@@ -68,7 +89,10 @@ class Transform:
     def json(self) -> dict:
         """Build a python dict for JSON serialization"""
         trans_dict = dict(name=self.__class__.__name__)
-        
+        trans['m'] = array_json(self.m)
+        trans['v'] = array_json(self.v)
+        return trans_dict
+
 
 class Scale(Transform):
     """Scale"""
@@ -89,6 +113,16 @@ class Scale(Transform):
         else:
             raise TypeError("Scale must be set with a scalar or vector")
 
+    def verify(self):
+        """Scale transforms should be diagonal and have a zero translation"""
+        if not super().verify():
+            return False
+        test_diag = np.alltrue(
+            (self.m - np.diag(np.diag(self.m))) == np.zeros(self.m.shape)
+        )
+        test_trans = np.alltrue( self.v == np.zeros(self.v.shape) )
+        return test_diag and test_trans
+
 
 class Translate(Transform):
     """Translate"""
@@ -100,6 +134,11 @@ class Translate(Transform):
         else:
             raise TypeError("Translate must be set with a vector")
 
+    def verify(self):
+        """Translate transforms should have identify for the 3x3 matrix"""
+        return super().verify() and  np.alltrue( 
+            self.m == np.eye(len(self.v))
+        )
 
 class Rotate(Transform):
     """Rotation"""
@@ -126,3 +165,19 @@ class Rotate(Transform):
             self.v = np.zeros(3, dtype=flint)
         else:
             raise TypeError("Axis must be a 3 dimensional vector")
+
+    def verify(self):
+        if not super().verify():
+            print('foo')
+            return False
+        if len(self.v) == 2:
+            det = self.m[0,0]*self.m[1,1] - self.m[0,1]*self.m[1,0]
+        else:
+            det = (+ self.m[0,0]*self.m[1,1]*self.m[2,2]
+                   + self.m[0,1]*self.m[1,2]*self.m[2,0]
+                   + self.m[0,2]*self.m[1,0]*self.m[2,1]
+                   - self.m[2,0]*self.m[1,1]*self.m[0,2]
+                   - self.m[2,1]*self.m[1,2]*self.m[0,0]
+                   - self.m[2,2]*self.m[1,0]*self.m[0,1])
+            print(det)
+        return (det == 1) and np.alltrue( self.v == np.zeros(self.v.shape) )
