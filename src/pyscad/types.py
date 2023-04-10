@@ -66,6 +66,116 @@ def is_point(a: Any) -> bool:
     """
     return is_num(a) or is_vec(a) or is_vec(a, length=1)
 
+# Simple Linear Algebra functions for 2x2 and 3x3 arrays
+def det2(a: npt.NDArray) -> Num:
+    """Calculate the determinant of a 2x2 matrix"""
+    return a[0,0]*a[1,1]-a[0,1]*a[0,1]
+
+def det3(a: npt.NDArray) -> Num:
+    """Calculate the determinant of a 3x3 matrix"""
+    return (a[0,0]*(a[1,1]*a[2,2] - a[1,2]*a[2,1]) +
+            a[0,1]*(a[1,2]*a[2,0] - a[1,0]*a[2,1]) +
+            a[0,2]*(a[1,0]*a[2,1] - a[1,1]*a[2,0]))
+
+def det(a: npt.NDArray) -> Num:
+    """Calculate the determinant of a 2x2 or 3x3 matrix"""
+    if a.shape[0] == 2:
+        return a[0,0]*a[1,1]-a[0,1]*a[0,1]
+    elif a.shape[0] == 3:
+        return det3(a)
+
+def eig2(a: npt.NDArray) -> Tuple[ntp.NDArray, npt.NDArray]:
+    """Calculate the eigenvalues and eigenvectors of a symetric 2x2 matrix"""
+    if a[0,1] == 0:
+        # Off diagonal is zero, so diagonal elements are the eigenvalues
+        if a[0,0] >= a[1,1]:
+            return diag(a), np.eye(2, dtype=flint)
+        else:
+            eigvals = np.array([a[1,1],a[0,0]])
+            eigvecs = np.array([[0,1],[1,0]], dtype=flint)
+            return eigvals, eigvecs
+    else:
+        # Off diagonal is not zero, so need to find eigenvalues
+        tra = a[0,0] + a[1,1]
+        deta = a[0,0]*a[1,1]-a[0,1]*a[1,0]
+        d = np.sqrt(tra*tra-4*deta)
+        eigvals = np.array([0.5*(tra + d), 0.5*(tra - d)])
+        if eigvals[0] == eigvals[1]:
+            eigvecs = np.eye(2, dtype=flint)
+        else:
+            eigvecs = np.eye(2, dtype=flint)
+            eigvecs[0] = (a-eigvals[0]*np.eye(2, dtype=flint))[:,0]
+            if np.alltrue(eigvecs[0] == np.zeros(2, dtype=flint)):
+                eigvecs[0] = (a-eigvals[0]*np.eye(2, dtype=flint))[:,1]
+            eigvecs[0] /= np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+            eigvecs[1,0] = eigvecs[0,1]
+            eigvecs[1,1] = -eigvecs[0,0]
+        return eigvals, eigvecs
+
+def eig3(a: npt.NDArray) -> Tuple[ntp.NDArray, npt.NDArray]:
+    """Calculate the eigenvalues and eigenvectors of a symetric 3x3 matrix"""
+    p1 = a[0,1]*a[0,1] + a[0,2]*a[0,2] + a[1,2]*a[1,2]
+    if p1 == 0:
+        # if off-diagonal are zero, then the diagonal is the eigenvalues
+        # and the vectors columns of the identify matrix
+        l = diag(a)
+        v = np.eye(3, dtype=flint)
+        if l[1] < l[2]:
+            l[1], l[2] = l[2], l[1]
+            v[1], v[2] = v[2], v[1]
+        if l[0] < l[1]:
+            l[0], l[1] = l[1], l[0]
+            v[0], v[1] = v[1], v[0]
+        if l[1] < l[2]:
+            l[1], l[2] = l[2], l[1]
+            v[1], v[2] = v[2], v[1]
+        return l, v
+    else:
+        tra = a[0,0] + a[1,1] + a[2,2]
+        q = tra/3
+        p2 = ((a[0,0]-q)*(a[0,0]-q) + 
+              (a[1,1]-q)*(a[1,1]-q) + 
+              (a[2,2]-q)*(a[2,2]-q))
+        p = np.sqrt(p2/6)
+        b = (a-q*np.eye(3))/p
+        phi = np.arccos(det3(b)/2)/3
+        eig0 = q + 2*p*cos(phi)
+        eig2 = q + 2*p*cos(phi + 2*pi/3)
+        eig1 = tra - eig0 - eig2
+        eigvals = np.array([eig0, eig1, eig2])
+        # special cases for repeated eigenvalues
+        eigvecs = np.eye(3, dtype=flint)
+        if (eig0 == eig1) and (eig0 == eig2):
+            # if all 3 eigenvalues the same, just use the identity
+            pass
+        else:
+            # Use Cayley-Hamilton theory to get two eigenvectors
+            m0 = (a-eig0*np.eye(3, dtype=flint))
+            m1 = (a-eig1*np.eye(3, dtype=flint))
+            m2 = (a-eig2*np.eye(3, dtype=flint))
+            eigvec[0] = (np.matmul(m1, m2))[:,0]
+            if np.alltrue( eigvec[0] == np.zeros(3) ):
+                eigvec[0] = (np.matmul(m1, m2))[:,1]
+                if np.alltrue( eigvec[0] == np.zeros(3) ):
+                    eigvec[0] = (np.matmul(m1, m2))[:,2]
+            eigvec[2] = (np.matmul(m0, m1))[:,0]
+            if np.alltrue( eigvec[2] == np.zeros(3) ):
+                eigvec[2] = (np.matmul(m0, m1))[:,1]
+                if np.alltrue( eigvec[2] == np.zeros(3) ):
+                    eigvec[2] = (np.matmul(m0, m1))[:,2]
+            # Use cross product to get last eigenvector
+            eigvec[1] = np.cross(eigvec[2], eigvec[0])
+            # normalize all eigenvectors
+            eigvec[0] /= np.sqrt(np.sum(eigvec[0]*eigvec[0]))
+            eigvec[1] /= np.sqrt(np.sum(eigvec[1]*eigvec[1]))
+            eigvec[2] /= np.sqrt(np.sum(eigvec[2]*eigvec[2]))
+        return eigenvals, eigenvecs
+
+
+# def svd(a: npt:NDArray) -> Num:
+#     ata = np.matmul(a.T, a)
+
+
 # Convenience functions for turning a flint/number or array into a JSON
 # serializable format.
 def num_json(x: Num) -> Union[float, dict]:
