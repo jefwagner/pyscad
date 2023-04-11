@@ -19,7 +19,7 @@ for those types.
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Union, Any, Sequence, Optional
+from typing import Union, Any, Sequence, Optional, Tuple
 import numpy.typing as npt
 
 import functools
@@ -69,12 +69,12 @@ def is_point(a: Any) -> bool:
 # Simple Linear Algebra functions for 2x2 and 3x3 arrays
 def det2(a: npt.NDArray) -> Num:
     """Calculate the determinant of a 2x2 matrix"""
-    return a[0,0]*a[1,1]-a[0,1]*a[0,1]
+    return a[0,0]*a[1,1] - a[0,1]*a[1,0]
 
 def det3(a: npt.NDArray) -> Num:
     """Calculate the determinant of a 3x3 matrix"""
     return (a[0,0]*(a[1,1]*a[2,2] - a[1,2]*a[2,1]) +
-            a[0,1]*(a[1,2]*a[2,0] - a[1,0]*a[2,1]) +
+            a[0,1]*(a[1,2]*a[2,0] - a[1,0]*a[2,2]) +
             a[0,2]*(a[1,0]*a[2,1] - a[1,1]*a[2,0]))
 
 def det(a: npt.NDArray) -> Num:
@@ -83,16 +83,17 @@ def det(a: npt.NDArray) -> Num:
         return a[0,0]*a[1,1]-a[0,1]*a[0,1]
     elif a.shape[0] == 3:
         return det3(a)
+    raise TypeError("Only works on 2 and 3 dimensional arrays")
 
-def eig2(a: npt.NDArray) -> Tuple[ntp.NDArray, npt.NDArray]:
+def eig2(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:
     """Calculate the eigenvalues and eigenvectors of a symetric 2x2 matrix"""
     if a[0,1] == 0:
         # Off diagonal is zero, so diagonal elements are the eigenvalues
         if a[0,0] >= a[1,1]:
-            return diag(a), np.eye(2, dtype=flint)
+            return np.diag(a), np.eye(2, dtype=flint)
         else:
             eigvals = np.array([a[1,1],a[0,0]])
-            eigvecs = np.array([[0,1],[1,0]], dtype=flint)
+            eigvecs = np.array([[0,1],[-1,0]], dtype=flint)
             return eigvals, eigvecs
     else:
         # Off diagonal is not zero, so need to find eigenvalues
@@ -104,43 +105,47 @@ def eig2(a: npt.NDArray) -> Tuple[ntp.NDArray, npt.NDArray]:
             eigvecs = np.eye(2, dtype=flint)
         else:
             eigvecs = np.eye(2, dtype=flint)
-            eigvecs[0] = (a-eigvals[0]*np.eye(2, dtype=flint))[:,0]
-            if np.alltrue(eigvecs[0] == np.zeros(2, dtype=flint)):
+            eigvecs[0] = (a-eigvals[1]*np.eye(2, dtype=flint))[:,0]
+            if np.alltrue(eigvecs[1] == np.zeros(2, dtype=flint)):
                 eigvecs[0] = (a-eigvals[0]*np.eye(2, dtype=flint))[:,1]
+            if eigvecs[0,0] > 0 or (eigvecs[0,0] == 0 and eigvecs[0,1] > 0):
+                norm = np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+            else:
+                norm = -np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
             eigvecs[0] /= np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
-            eigvecs[1,0] = eigvecs[0,1]
-            eigvecs[1,1] = -eigvecs[0,0]
+            eigvecs[1,0] = -eigvecs[0,1]
+            eigvecs[1,1] = eigvecs[0,0]
         return eigvals, eigvecs
 
-def eig3(a: npt.NDArray) -> Tuple[ntp.NDArray, npt.NDArray]:
+def eig3(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:
     """Calculate the eigenvalues and eigenvectors of a symetric 3x3 matrix"""
     p1 = a[0,1]*a[0,1] + a[0,2]*a[0,2] + a[1,2]*a[1,2]
     if p1 == 0:
         # if off-diagonal are zero, then the diagonal is the eigenvalues
         # and the vectors columns of the identify matrix
-        l = diag(a)
+        l = np.diag(a).copy()
         v = np.eye(3, dtype=flint)
         if l[1] < l[2]:
             l[1], l[2] = l[2], l[1]
-            v[1], v[2] = v[2], v[1]
+            v[1], v[2] = v[2], -v[1]
         if l[0] < l[1]:
             l[0], l[1] = l[1], l[0]
-            v[0], v[1] = v[1], v[0]
+            v[0], v[1] = v[1], -v[0]
         if l[1] < l[2]:
             l[1], l[2] = l[2], l[1]
-            v[1], v[2] = v[2], v[1]
+            v[1], v[2] = v[2], -v[1]
         return l, v
     else:
         tra = a[0,0] + a[1,1] + a[2,2]
         q = tra/3
         p2 = ((a[0,0]-q)*(a[0,0]-q) + 
               (a[1,1]-q)*(a[1,1]-q) + 
-              (a[2,2]-q)*(a[2,2]-q))
+              (a[2,2]-q)*(a[2,2]-q)) + 2*p1
         p = np.sqrt(p2/6)
         b = (a-q*np.eye(3))/p
         phi = np.arccos(det3(b)/2)/3
-        eig0 = q + 2*p*cos(phi)
-        eig2 = q + 2*p*cos(phi + 2*pi/3)
+        eig0 = q + 2*p*np.cos(phi)
+        eig2 = q + 2*p*np.cos(phi + 2*np.pi/3)
         eig1 = tra - eig0 - eig2
         eigvals = np.array([eig0, eig1, eig2])
         # special cases for repeated eigenvalues
@@ -153,23 +158,34 @@ def eig3(a: npt.NDArray) -> Tuple[ntp.NDArray, npt.NDArray]:
             m0 = (a-eig0*np.eye(3, dtype=flint))
             m1 = (a-eig1*np.eye(3, dtype=flint))
             m2 = (a-eig2*np.eye(3, dtype=flint))
-            eigvec[0] = (np.matmul(m1, m2))[:,0]
-            if np.alltrue( eigvec[0] == np.zeros(3) ):
-                eigvec[0] = (np.matmul(m1, m2))[:,1]
-                if np.alltrue( eigvec[0] == np.zeros(3) ):
-                    eigvec[0] = (np.matmul(m1, m2))[:,2]
-            eigvec[2] = (np.matmul(m0, m1))[:,0]
-            if np.alltrue( eigvec[2] == np.zeros(3) ):
-                eigvec[2] = (np.matmul(m0, m1))[:,1]
-                if np.alltrue( eigvec[2] == np.zeros(3) ):
-                    eigvec[2] = (np.matmul(m0, m1))[:,2]
+            eigvecs[0] = (m1.dot(m2))[:,0]
+            if np.alltrue( eigvecs[0] == np.zeros(3) ):
+                eigvecs[0] = (m1.dot(m2))[:,1]
+                if np.alltrue( eigvecs[0] == np.zeros(3) ):
+                    eigvecs[0] = (m1.dot(m2))[:,2]
+            eigvecs[2] = (m0.dot(m1))[:,0]
+            if np.alltrue( eigvecs[2] == np.zeros(3) ):
+                eigvecs[2] = (m0.dot(m1))[:,1]
+                if np.alltrue( eigvecs[2] == np.zeros(3) ):
+                    eigvecs[2] = (m0.dot(m1))[:,2]
+            # Normalize the first two vectors and orient in a well defined something
+            if (eigvecs[0,0] > 0 or
+                (eigvecs[0,0] == 0 and eigvecs[0,1] > 0) or
+                (eigvecs[0,0] == 0 and eigvecs[0,1] == 0 and eigvecs[0,2] > 0)):
+                norm = np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+            else:
+                norm = -np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+            eigvecs[0] /= norm
+            if (eigvecs[2,0] > 0 or
+                (eigvecs[2,0] == 0 and eigvecs[2,1] > 0) or
+                (eigvecs[2,0] == 0 and eigvecs[2,1] == 0 and eigvecs[2,2] > 0)):
+                norm = np.sqrt(np.sum(eigvecs[2]*eigvecs[2]))
+            else:
+                norm = -np.sqrt(np.sum(eigvecs[2]*eigvecs[2]))
+            eigvecs[0] /= norm
             # Use cross product to get last eigenvector
-            eigvec[1] = np.cross(eigvec[2], eigvec[0])
-            # normalize all eigenvectors
-            eigvec[0] /= np.sqrt(np.sum(eigvec[0]*eigvec[0]))
-            eigvec[1] /= np.sqrt(np.sum(eigvec[1]*eigvec[1]))
-            eigvec[2] /= np.sqrt(np.sum(eigvec[2]*eigvec[2]))
-        return eigenvals, eigenvecs
+            eigvecs[1] = np.cross(eigvecs[2], eigvecs[0])
+        return eigvals, eigvecs
 
 
 # def svd(a: npt:NDArray) -> Num:

@@ -86,3 +86,87 @@ class TestJson:
                 'b': np.nextafter(i,np.inf), 
                 'v': i} for i in row] for row in a]
         assert array_json(np.array(a, dtype=flint)) == fa
+
+
+class TestLinAlg:
+    """Validate the linear algrebra routines"""
+
+    def test_det2(self):
+        assert 1 == det2(np.eye(2, dtype=flint))
+        assert 0 == det2(np.array([[1,1],[2,2]], dtype=flint))
+        assert -1 == det2(np.array([[0,1],[1,0]], dtype=flint))
+        for i in range(20):
+            th = flint(np.pi*i/20)
+            c = np.cos(th)
+            s = np.sin(th)
+            assert 1 == det2(np.array([[c,-s],[s,c]]))
+        for i in range(20):
+            assert i*i == det2(i*np.eye(2, dtype=flint))
+
+    def test_det3(self):
+        assert 1 == det3(np.eye(3, dtype=flint))
+        a = np.array([
+            [1,1,1],
+            [2,2,2],
+            [1,2,3]
+        ], dtype=flint)
+        assert 0 == det3(a)
+        a = np.array([
+            [0,1,0],
+            [1,0,0],
+            [0,0,1]
+        ], dtype=flint)
+        assert -1 == det3(a)
+        for i in range(20):
+            assert i*i*i == det3(i*np.eye(3, dtype=flint))
+
+    def test_det(self):
+        assert 1 == det(np.eye(2, dtype=flint))
+        assert 1 == det(np.eye(3, dtype=flint))
+
+    def test_eig2_diag(self):
+        # All equal
+        l, v = eig2(np.eye(2, dtype=flint))
+        assert np.alltrue( l == np.ones((2,)) )
+        assert np.alltrue( v == np.eye(2) )
+        assert np.cross(v[0],v[1]) == 1
+        # In order
+        l, v = eig2(np.array([[2,0],[0,1]], dtype=flint))
+        assert np.alltrue( l == np.array([2,1]) )
+        assert np.alltrue( v == np.eye(2) )
+        assert np.cross(v[0],v[1]) == 1
+        # out of order
+        l, v = eig2(np.array([[1,0],[0,2]], dtype=flint))
+        assert np.alltrue( l == np.array([2,1]) )
+        assert np.alltrue(v == np.array([[0,1],[-1,0]]) )
+        assert np.cross(v[0],v[1]) == 1
+
+    def tst_eig2_full(self):
+        # Pauli X spin matrix
+        l, v = eig2(np.array([[0,1],[1,0]], dtype=flint))
+        assert np.alltrue( l == np.array([1,-1]) )
+        assert np.alltrue( v*np.sqrt(2) == np.array([[1,1],[-1,1]]) )
+        assert np.cross(v[0],v[1]) == 1
+        # Full
+
+    def test_eig3_diag(self):
+        # All equal
+        l, v = eig3(np.eye(3, dtype=flint))
+        assert np.alltrue( l == np.ones((3,)) )
+        assert np.alltrue( v == np.eye(3) )
+        assert np.dot(v[0], np.cross(v[1],v[2])) == 1
+        # Testing all orderings
+        for ord in ([3,2,1], [2,1,3], [1,3,2], [1,2,3], [2,3,1], [3,1,2]):
+            l, v = eig3(np.diag(np.array(ord, dtype=flint)))
+            assert np.alltrue( l == np.array([3,2,1]) )
+            assert np.dot(v[0], np.cross(v[1],v[2])) == 1
+    
+    def test_eig3_full(self):
+        a = np.array([
+            [4,-1,-2],
+            [-1,3,-1],
+            [-2,-1,4]
+        ], dtype=flint)
+        l, v = eig3(a)
+        assert np.alltrue( l == np.array([6, 4, 1]))
+        assert np.dot(v[0], np.cross(v[1],v[2])) == 1
