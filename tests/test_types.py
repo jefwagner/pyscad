@@ -141,13 +141,25 @@ class TestLinAlg:
         assert np.alltrue(v == np.array([[0,1],[-1,0]]) )
         assert np.cross(v[0],v[1]) == 1
 
+    # list of 2x2 symmetric matrices that can be used for testing
+    # https://ece.uwaterloo.ca/~dwharder/Integer_eigenvalues/Symmetric_2_by_2_invertible_matrices/
     def tst_eig2_full(self):
         # Pauli X spin matrix
         l, v = eig2(np.array([[0,1],[1,0]], dtype=flint))
         assert np.alltrue( l == np.array([1,-1]) )
         assert np.alltrue( v*np.sqrt(2) == np.array([[1,1],[-1,1]]) )
         assert np.cross(v[0],v[1]) == 1
-        # Full
+        # Full matrix
+        l, v = eig2(np.array([[2,-1],[-1,2]], dtype=flint))
+        # test eigenvalues
+        assert np.alltrue( l == np.array[3,1] )
+        # Test eigenvector property
+        for ll, vv in zip(l, v):
+            assert np.alltrue( a.dot(vv) == ll*vv )
+        # Test v is unitary
+        assert np.det(v) == 1
+        # Test that the eigenvectors are orthogonal
+        assert np.alltrue( v.dot(v.T) == np.eye(2) )
 
     def test_eig3_diag(self):
         # All equal
@@ -159,8 +171,10 @@ class TestLinAlg:
         for ord in ([3,2,1], [2,1,3], [1,3,2], [1,2,3], [2,3,1], [3,1,2]):
             l, v = eig3(np.diag(np.array(ord, dtype=flint)))
             assert np.alltrue( l == np.array([3,2,1]) )
-            assert np.dot(v[0], np.cross(v[1],v[2])) == 1
-    
+            assert det(v) == 1
+
+    # list of 3x3 symmetric matrices that can be used for testing
+    # https://ece.uwaterloo.ca/~dwharder/Integer_eigenvalues/Symmetric_3_by_3_invertible_matrices/    
     def test_eig3_full(self):
         a = np.array([
             [4,-1,-2],
@@ -168,5 +182,37 @@ class TestLinAlg:
             [-2,-1,4]
         ], dtype=flint)
         l, v = eig3(a)
-        assert np.alltrue( l == np.array([6, 4, 1]))
-        assert np.dot(v[0], np.cross(v[1],v[2])) == 1
+        lt = np.array([6, 4, 1])
+        # confirm eigenvalues match
+        assert np.alltrue( l == lt )
+        # Test eigenvalue property
+        # for ll, vv in zip(l, v):
+        #     print([(x, x.eps) for x in (a.dot(vv)-ll*vv)])
+        #     assert np.alltrue( a.dot(vv) == ll*vv )
+        # Confirm orientation of matrix of eigenvalues is unitary
+        assert det(v) == 1
+        # Confirm the eigenvectors are orthogonal
+        assert np.alltrue( v.dot(v.T) == np.eye(3) )
+
+    def test_eig_full(self):
+        a = np.array([[3,-1],[-1,3]], dtype=flint)
+        lt = np.array([4,2])
+        l, v = eig(a)
+        assert np.alltrue( l == lt )
+        for ll, vv in zip(l, v):
+            assert np.alltrue( a.dot(vv) == ll*vv )
+        assert det(v) == 1
+        np.alltrue( v.dot(v.T) == np.eye(len(a)) )
+        a = np.array([
+            [4,3,-3],
+            [3,4,-3],
+            [-3,-3,4]
+        ], dtype=flint)
+        lt = np.array([10,1,1])
+        l, v = eig(a)
+        assert np.alltrue( l == lt )
+        # for ll, vv in zip(l, v):
+        #     assert np.alltrue( a.dot(vv) == ll*vv )
+        assert det(v) == 1
+        np.alltrue( v.dot(v.T) == np.eye(len(a)) )
+ 
