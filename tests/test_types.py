@@ -186,9 +186,8 @@ class TestLinAlg:
         # confirm eigenvalues match
         assert np.alltrue( l == lt )
         # Test eigenvalue property
-        # for ll, vv in zip(l, v):
-        #     print([(x, x.eps) for x in (a.dot(vv)-ll*vv)])
-        #     assert np.alltrue( a.dot(vv) == ll*vv )
+        for ll, vv in zip(l, v):
+            assert np.alltrue( a.dot(vv) == ll*vv )
         # Confirm orientation of matrix of eigenvalues is unitary
         assert det(v) == 1
         # Confirm the eigenvectors are orthogonal
@@ -211,8 +210,9 @@ class TestLinAlg:
         lt = np.array([10,1,1])
         l, v = eig(a)
         assert np.alltrue( l == lt )
-        # for ll, vv in zip(l, v):
-        #     assert np.alltrue( a.dot(vv) == ll*vv )
+        for ll, vv in zip(l, v):
+            # print([(x, x.eps) for x in (a.dot(vv)-ll*vv)])
+            assert np.alltrue( a.dot(vv) == ll*vv )
         assert det(v) == 1
         np.alltrue( v.dot(v.T) == np.eye(len(a)) )
  

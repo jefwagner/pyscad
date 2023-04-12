@@ -152,6 +152,7 @@ def eig3(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:
         eigvals = np.array([eig0, eig1, eig2])
         # calculate the vectors
         eigvecs = find_vecs3(a, eigvals)
+        eigvecs = refine_vec3(a, eigvecs)
         return eigvals, eigvecs
 
 def find_vecs3(a: npt.NDArray, eigvals: npt.NDArray) -> npt.NDArray:
@@ -198,18 +199,19 @@ def find_vecs3(a: npt.NDArray, eigvals: npt.NDArray) -> npt.NDArray:
         eigvecs[1] = np.cross(eigvecs[2], eigvecs[0])
     return eigvecs
 
-def refine_vecs3(a: npt.NDArray, q: npt.NDArray) -> npt.NDArray:
+def refine_vec3(a: npt.NDArray, q: npt.NDArray) -> npt.NDArray:
     """Refine the eigenvectors"""
     l = np.zeros((3,), dtype=flint)
     e = np.zeros((3,3), dtype=flint)
     r = np.eye(3) - (q.T).dot(q)
-    s = (q.T).dot(a).dot(q)
+    s = q.dot(a).dot(q.T)
+    print(s)
     for i in range(3):
         l[i] = s[i,i]/(1-r[i,i])
     for i in range(3):
         for j in range(3):
-            e[i,j] = 0.5*r[i,] if l[i] == l[j] else (s[i,j]-l[i]*r[i,j])/(l[j]-l[i])
-    return q.dot(eye(3, dtype=flint) + e)
+            e[i,j] = 0.5*r[i,j] if l[i] == l[j] else (s[i,j]+l[j]*r[i,j])/(l[j]-l[i])
+    return q - q.dot(e)
 
 def eig(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:
     """Calculate eigenvalues and eigenvectors for a symmetric 2x2 or 3x3 matrix"""
