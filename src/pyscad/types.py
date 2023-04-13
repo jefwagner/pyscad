@@ -152,7 +152,7 @@ def eig3(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:
         eigvals = np.array([eig0, eig1, eig2])
         # calculate the vectors
         eigvecs = find_vecs3(a, eigvals)
-        eigvecs = refine_vec3(a, eigvecs)
+        # eigvecs = refine_vec3(a, eigvecs)
         return eigvals, eigvecs
 
 def find_vecs3(a: npt.NDArray, eigvals: npt.NDArray) -> npt.NDArray:
@@ -201,17 +201,21 @@ def find_vecs3(a: npt.NDArray, eigvals: npt.NDArray) -> npt.NDArray:
 
 def refine_vec3(a: npt.NDArray, q: npt.NDArray) -> npt.NDArray:
     """Refine the eigenvectors"""
+    q = q.T.copy()
     l = np.zeros((3,), dtype=flint)
     e = np.zeros((3,3), dtype=flint)
     r = np.eye(3) - (q.T).dot(q)
-    s = q.dot(a).dot(q.T)
-    print(s)
+    s = (q.T).dot(a).dot(q)
     for i in range(3):
         l[i] = s[i,i]/(1-r[i,i])
     for i in range(3):
         for j in range(3):
             e[i,j] = 0.5*r[i,j] if l[i] == l[j] else (s[i,j]+l[j]*r[i,j])/(l[j]-l[i])
-    return q - q.dot(e)
+    q += q.dot(e)
+    q = q.T.copy()
+    for i, v in enumerate(q):
+        q[i] /= np.sqrt(np.sum(v*v))
+    return q
 
 def eig(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:
     """Calculate eigenvalues and eigenvectors for a symmetric 2x2 or 3x3 matrix"""
@@ -228,10 +232,10 @@ def svd(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     u, and vt are a unitary matricies and sig is a vector of the singular\
     values. The input matrix can be identified as a = u.diag(sig).vt
     """
-    b = np.matmul(a.T, a)
+    b = (a.T).dot(a)
     l, vt = eig(b)
     sig = np.sqrt(l)
-    u = a.dot(vt.T).dot(1/sig)
+    u = a.dot(vt.T).dot(np.diag(1/sig))
     return u, sig, vt
 
 
