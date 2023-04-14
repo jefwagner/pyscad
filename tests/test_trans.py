@@ -33,17 +33,16 @@ class TestTransform:
         assert isinstance(t, Transform)
         assert isinstance(t.m, np.ndarray)
         assert isinstance(t.v, np.ndarray)
+        assert np.alltrue(np.eye(3) == t.m)
+        assert np.alltrue(np.zeros(3) == t.v)
         t = Transform(2)
         assert isinstance(t, Transform)
         assert isinstance(t.m, np.ndarray)
         assert isinstance(t.v, np.ndarray)
+        assert np.alltrue(np.eye(2) == t.m)
+        assert np.alltrue(np.zeros(2) == t.v)
         with pytest.raises(ValueError):
             t = Transform(4)
-
-    def test_identity(self):
-        t = Transform()
-        assert np.alltrue(np.eye(3) == t.m)
-        assert np.alltrue(np.zeros(3) == t.v)
 
     def test_from_array(self):
         m = np.eye(3, dtype=flint)
@@ -62,6 +61,9 @@ class TestTransform:
             t = Transform.from_arrays(m, v)
         with pytest.raises(ValueError):
             t = Transform.from_arrays(m.astype(flint), v.astype(flint))
+
+
+class TestProperties:
 
     def test_len(self):
         t = Transform()
@@ -110,6 +112,9 @@ class TestTransform:
         assert t2 is not t
         assert t2 == t
 
+
+class TestSubTypes:
+
     def test_scale(self):
         s = Scale(2)
         assert isinstance(s, Transform)
@@ -134,20 +139,6 @@ class TestTransform:
         with pytest.raises(TypeError):
             s = Scale("foo")
     
-    def test_scale_verify(self):
-        m = np.eye(3, dtype=flint)
-        v = np.zeros(3, dtype=flint)
-        s = Scale.from_arrays(m, v)
-        assert isinstance(s, Scale)
-        assert s.verify()
-        m = np.ones((3,3), dtype=flint)
-        with pytest.raises(ValueError):
-            s = Scale.from_arrays(m, v)
-        m = np.eye(3, dtype=flint)
-        v = np.ones(3, dtype=flint)
-        with pytest.raises(ValueError):
-            s = Scale.from_arrays(m, v)
-
     def test_translate(self):
         t = Translate([1,2])
         assert isinstance(t, Transform)
@@ -166,14 +157,6 @@ class TestTransform:
         with pytest.raises(TypeError):
             t = Translate("foo")
 
-    def test_translate_verify(self):
-        m = np.eye(3, dtype=flint)
-        v = np.ones(3, dtype=flint)
-        t = Translate.from_arrays(m, v)
-        m = np.ones((3,3), dtype=flint)
-        with pytest.raises(ValueError):
-            t = Translate.from_arrays(m, v)
-
     def test_rotate(self):
         r = Rotate(np.pi/2)
         assert isinstance(r, Transform)
@@ -191,7 +174,32 @@ class TestTransform:
             r = Rotate(np.pi/2, [0,0])
         with pytest.raises(TypeError):
             r = Rotate("foo")
-    
+
+
+class TestVerify:
+
+    def test_scale_verify(self):
+        m = np.eye(3, dtype=flint)
+        v = np.zeros(3, dtype=flint)
+        s = Scale.from_arrays(m, v)
+        assert isinstance(s, Scale)
+        assert s.verify()
+        m = np.ones((3,3), dtype=flint)
+        with pytest.raises(ValueError):
+            s = Scale.from_arrays(m, v)
+        m = np.eye(3, dtype=flint)
+        v = np.ones(3, dtype=flint)
+        with pytest.raises(ValueError):
+            s = Scale.from_arrays(m, v)
+
+    def test_translate_verify(self):
+        m = np.eye(3, dtype=flint)
+        v = np.ones(3, dtype=flint)
+        t = Translate.from_arrays(m, v)
+        m = np.ones((3,3), dtype=flint)
+        with pytest.raises(ValueError):
+            t = Translate.from_arrays(m, v)
+
     def test_rotate_verify(self):
         c = np.cos(flint(2.5))
         s = np.sin(flint(2.5))

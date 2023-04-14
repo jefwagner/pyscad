@@ -84,12 +84,24 @@ class Transform:
             return False
         return np.alltrue(self.m == other.m) and np.alltrue(self.v == other.v)
 
-    def json(self) -> dict:
+    def ser(self) -> dict:
         """Build a python dict for JSON serialization"""
         trans_dict = dict(name=self.__class__.__name__)
-        trans['m'] = array_json(self.m)
-        trans['v'] = array_json(self.v)
+        trans['m'] = array_ser(self.m)
+        trans['v'] = array_ser(self.v)
         return trans_dict
+
+    @staticmethod
+    def deser(ser: dict) -> 'Transform':
+        """Build a transform from a serialized dict object"""
+        if not isinstance(ser, dict):
+            raise TypeError("Can only deserialized from a python dict object")
+        if 'name' not in ser.keys():
+            ValueError("Dict object must a have 'name' attribute")
+        m = array_deser(ser['m'])
+        v = array_deser(ser['v'])
+        t = globals()[ser['name']].from_arrays(m, v)
+        return t
 
 
 class Scale(Transform):
@@ -137,6 +149,7 @@ class Translate(Transform):
         return super().verify() and  np.alltrue( 
             self.m == np.eye(len(self.v))
         )
+
 
 class Rotate(Transform):
     """Rotation"""

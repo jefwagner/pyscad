@@ -68,7 +68,7 @@ def is_point(a: Any) -> bool:
 
 # Convenience functions for turning a flint/number or array into a JSON
 # serializable format.
-def num_json(x: Num) -> Union[float, dict]:
+def num_ser(x: Num) -> Union[float, dict]:
     """Convert a generic number into a JSON serializable object"""
     if isinstance(x, flint):
         return {
@@ -81,12 +81,12 @@ def num_json(x: Num) -> Union[float, dict]:
     else:
         raise TypeError('Can only convert general number type')
 
-def array_json(a: npt.NDArray[Num]) -> list:
+def array_ser(a: npt.NDArray[Num]) -> list:
     """Convert a numpy array into a JSON serializable object"""
     if not isinstance(a, np.ndarray) or a.dtype not in (*np_numbers, flint):
         raise TypeError('Can only convert NumPy ndarrays of numbers')
     if len(a.shape) == 1:
-        return [num_json(x) for x in a]
+        return [num_ser(x) for x in a]
     else:
-        return [array_json(suba) for suba in a]
+        return [array_ser(suba) for suba in a]
 
