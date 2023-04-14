@@ -25,12 +25,10 @@ import numpy as np
 from flint import flint
 
 from .types import *
-
+from .linalg import det
 
 class Transform:
-    """Affine Transform"""
-    m: npt.NDArray[flint]
-    v: npt.NDArray[flint]
+    """A general affine transform"""
 
     def __init__(self, dim: int = 3):
         """Create a new transform"""
@@ -168,16 +166,5 @@ class Rotate(Transform):
 
     def verify(self):
         if not super().verify():
-            print('foo')
             return False
-        if len(self.v) == 2:
-            det = self.m[0,0]*self.m[1,1] - self.m[0,1]*self.m[1,0]
-        else:
-            det = (+ self.m[0,0]*self.m[1,1]*self.m[2,2]
-                   + self.m[0,1]*self.m[1,2]*self.m[2,0]
-                   + self.m[0,2]*self.m[1,0]*self.m[2,1]
-                   - self.m[2,0]*self.m[1,1]*self.m[0,2]
-                   - self.m[2,1]*self.m[1,2]*self.m[0,0]
-                   - self.m[2,2]*self.m[1,0]*self.m[0,1])
-            print(det)
-        return (det == 1) and np.alltrue( self.v == np.zeros(self.v.shape) )
+        return (det(self.m) == 1) and np.alltrue( self.v == np.zeros(self.v.shape) )
