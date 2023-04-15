@@ -81,6 +81,17 @@ def num_ser(x: Num) -> Union[float, dict]:
     else:
         raise TypeError('Can only convert general number type')
 
+def num_deser(x: Union[float, dict]) -> Num:
+    """Convert from a serializable object into either a generic number"""
+    if isinstance(x, (int, float)):
+        return x
+    try:
+        f = flint(0)
+        f.interval = x['a'], x['b'], x['v']
+        return f
+    except KeyError:
+        raise TypeError('Input was not a serialized number')
+
 def array_ser(a: npt.NDArray[Num]) -> list:
     """Convert a numpy array into a JSON serializable object"""
     if not isinstance(a, np.ndarray) or a.dtype not in (*np_numbers, flint):
@@ -90,3 +101,14 @@ def array_ser(a: npt.NDArray[Num]) -> list:
     else:
         return [array_ser(suba) for suba in a]
 
+def array_deser(a: list) -> npt.NDArray[Num]:
+    """Convert from a serializable objet into a numpy array of generic numbers"""
+    if not isinstance(a, list):
+        raise TyperError("Input is not a serialized array")
+    try:
+        return np.array([
+            array_deser(x) if isinstance(x, list) else num_deser(x)
+            for x in a
+        ])
+    except TypeError as e:
+        raise ValueError("serialized array elements were not serialized numbers")

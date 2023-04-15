@@ -26,25 +26,25 @@ from ..trans import Translate, Scale
 class Prim(Csg):
     """CSG Primitive abstract base class"""
 
-    def __init__(self, position: Vec = (0,0,0)):
+    def __init__(self, pos: Vec = (0,0,0)):
         super().__init__()
-        if not is_vec(position, length=3):
+        if not is_vec(pos, length=3):
             raise TypeError("Position must be a vector of length 3")
         self.params.extend(['pos'])
-        self.pos = np.array(position, dtype=flint)
+        self.pos = np.array(pos, dtype=flint)
         self.trans = [Translate(self.pos)]
 
 
 class Sphere(Prim):
     """A CSG Sphere primitive"""
 
-    def __init__(self, radius: Num = 1, position: Vec = (0,0,0)):
+    def __init__(self, r: Num = 1, pos: Vec = (0,0,0)):
         """Create a new Sphere object
-        @param radius The radius of the sphere
-        @param position The position of the center of the sphere
+        @param r The radius of the sphere
+        @param pos The position of the center of the sphere
         """
-        super().__init__(position)
-        if not is_num(radius):
+        super().__init__(pos)
+        if not is_num(r):
             raise TypeError("Radius must be a number")
         self.params.extend(['r'])
         self.r = flint(radius)
@@ -54,12 +54,12 @@ class Sphere(Prim):
 class Box(Prim):
     """A CSG Box primitive"""
 
-    def __init__(self, size: Union[Num, Vec] = 1, position: Vec = (0,0,0)):
+    def __init__(self, size: Union[Num, Vec] = 1, pos: Vec = (0,0,0)):
         """Create a new box
         @param size The size of the Box
-        @param position The position of the lower-left-front corner of the Box
+        @param pos The position of the lower-left-front corner of the Box
         """
-        super().__init__()
+        super().__init__(pos)
         if (not is_num(size)) or (not is_vec(size, length=3)):
             raise TypeError("Size must be a number or set of three numbers")
         self.params.extend(['size'])
@@ -73,18 +73,18 @@ class Box(Prim):
 class Cyl(Prim):
     """A CSG Cylinder primitive"""
 
-    def __init__(self, height: Num = 1, radius: Num = 1, position: Vec = (0,0,0)):
+    def __init__(self, h: Num = 1, r: Num = 1, pos: Vec = (0,0,0)):
         """Create a new cylinder
-        @param height The height or length of the cylinder
-        @param radius The radius of the cylinder
+        @param h The height or length of the cylinder
+        @param r The radius of the cylinder
         @position The position of the lower-center point of the cylinder
         """
-        super().__init__(position)
-        if (not is_num(height)) or (not is_num(radius)):
+        super().__init__(pos)
+        if (not is_num(h)) or (not is_num(r)):
             raise TypeError("Height and radius must be numbers")
         self.params.extend(['h','r'])
-        self.h = flint(height)
-        self.r = flint(radius)
+        self.h = flint(h)
+        self.r = flint(r)
         self.trans.prepend(
             Scale((self.r, self.r, self.h)))
 
@@ -92,17 +92,17 @@ class Cyl(Prim):
 class Cone(Prim):
     """A CSG Cone primitive"""
 
-    def __init__(self, height = 1, radius = 1, position = (0,0,0)):
+    def __init__(self, h = 1, r = 1, pos: Vec = (0,0,0)):
         """Create a new cone
-        @param height The height of the cone
-        @param radius The radius of the cylinder
+        @param h The height of the cone
+        @param r The radius of the cylinder
         @position The position of the lower-center point of the cone
         """
-        super().__init__(position)
-        if (not is_num(height)) or (not is_num(radius)):
+        super().__init__(pos)
+        if (not is_num(h)) or (not is_num(r)):
             raise TypeError("Height and radius must be numbers")
         self.params.extend(['h','r'])
-        self.h = flint(height)
-        self.r = flint(radius)
+        self.h = flint(h)
+        self.r = flint(r)
         self.trans.prepend(
             Scale((self.r, self.r, self.h)))

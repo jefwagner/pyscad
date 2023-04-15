@@ -86,21 +86,22 @@ class Transform:
 
     def ser(self) -> dict:
         """Build a python dict for JSON serialization"""
-        trans_dict = dict(name=self.__class__.__name__)
-        trans['m'] = array_ser(self.m)
-        trans['v'] = array_ser(self.v)
-        return trans_dict
+        state = dict()
+        state['__class__'] = self.__class__.__name__
+        state['m'] = array_ser(self.m)
+        state['v'] = array_ser(self.v)
+        return state
 
     @staticmethod
     def deser(ser: dict) -> 'Transform':
         """Build a transform from a serialized dict object"""
         if not isinstance(ser, dict):
             raise TypeError("Can only deserialized from a python dict object")
-        if 'name' not in ser.keys():
-            ValueError("Dict object must a have 'name' attribute")
+        if '__class__' not in ser.keys():
+            ValueError("Dict object must a have '__class__' attribute")
         m = array_deser(ser['m'])
         v = array_deser(ser['v'])
-        t = globals()[ser['name']].from_arrays(m, v)
+        t = globals()[ser['__class__']].from_arrays(m, v)
         return t
 
 

@@ -27,8 +27,8 @@ from .trans import Transform, Scale, Translate, Rotate
 class Csg:
     """Constructive Solid Geometry (CSG) abstract base class"""
     trans: list[Transform] # All CSG objects can have their own list of transforms
-    params: list[str]
-    meta: dict(str, Any)
+    params: list[str] # A list of parameter names used for serialization
+    meta: dict(str, Any) # Extra metadata can be supplied for each object
 
     def __init__(self):
         self.trans = []
@@ -85,15 +85,27 @@ class Csg:
         self.meta[key] = value
         return self
 
-    def ser(self):
+    def ser(self) -> dict:
         """Build a python dict for JSON serialization"""
         # Start off with object type
-        csg_dict = dict(name=self.__class__.__name__,)
+        state = dict()
+        state['__module__'] = self.__module__
+        state['__class__'] = self.__class__.__name__
         # Then Include the list of transforms
-        csg_dict['trans'] = [t.ser() for t in self.trans]
-        # Next list all children and/or list of object specific parameters
-        if hasattr(self, 'children'):
-            csg_dict['children'] = [child.ser() for child in self.children]
-        # Finally include meta-data
-        csg_dict['meta'] = self.meta
-        return csg_dict
+        state['trans'] = [t.ser() for t in self.trans]
+        # Next add all object specific parameters
+        params = {}
+        for param_name in self.params:
+            param_val = getattr(self, param_name)
+            if isinstance(param_val, np.ndarray):
+                param_ser = array_ser(param_val)
+            else:
+                param_ser = num_ser(param_val)
+            params[p] = param_ser
+        state['params'] = params
+        # # Finally include meta-data
+        # state['meta'] = self.meta
+        return state
+
+        
+
