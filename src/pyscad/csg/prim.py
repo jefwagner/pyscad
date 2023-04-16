@@ -47,8 +47,8 @@ class Sphere(Prim):
         if not is_num(r):
             raise TypeError("Radius must be a number")
         self.params.extend(['r'])
-        self.r = flint(radius)
-        self.trans.prepend(Scale(self.r))
+        self.r = flint(r)
+        self.trans.insert(0, Scale(self.r))
 
 
 class Box(Prim):
@@ -60,14 +60,14 @@ class Box(Prim):
         @param pos The position of the lower-left-front corner of the Box
         """
         super().__init__(pos)
-        if (not is_num(size)) or (not is_vec(size, length=3)):
+        if (not is_num(size)) and (not is_vec(size, length=3)):
             raise TypeError("Size must be a number or set of three numbers")
         self.params.extend(['size'])
         if is_num(size):
             self.size = np.array([size, size, size], dtype=flint)
         else:
             self.size = np.array(size, dtype=flint)
-        self.trans.prepend(Scale(self.size))
+        self.trans.insert(0, Scale(self.size))
 
 
 class Cyl(Prim):
@@ -85,7 +85,7 @@ class Cyl(Prim):
         self.params.extend(['h','r'])
         self.h = flint(h)
         self.r = flint(r)
-        self.trans.prepend(
+        self.trans.insert(0, 
             Scale((self.r, self.r, self.h)))
 
 
@@ -104,5 +104,5 @@ class Cone(Prim):
         self.params.extend(['h','r'])
         self.h = flint(h)
         self.r = flint(r)
-        self.trans.prepend(
+        self.trans.insert(0, 
             Scale((self.r, self.r, self.h)))
