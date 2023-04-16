@@ -16,6 +16,8 @@ not, see <https://www.gnu.org/licenses/>.
 
 from .types import *
 from .trans import Transform, Scale, Translate, Rotate
+from .csg.prim import Sphere, Box, Cyl, Cone
+from .csg.op import Union, Diff, IntXn
 
 # # Export floating point interval objects and the v_flint helper function
 # from .flint import flint, v_flint

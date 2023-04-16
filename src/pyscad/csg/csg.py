@@ -56,7 +56,7 @@ class Csg:
         self.trans.append(Scale(size))
         return self
 
-    def trans(self, dx: Vec) -> 'Csg':
+    def move(self, dx: Vec) -> 'Csg':
         """Apply a translation transformation"""
         self.trans.append(Translate(dx))
         return self

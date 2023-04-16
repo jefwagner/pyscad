@@ -95,7 +95,7 @@ I have started the idea-work for how to structure the objects themselves. I
 believe I know how I'm going to lay out the objects, objects, and which methods
 they will need. However, I'm not exactly sure how I'm going to implement all the
 methods. There is one method in particular I am struggling with: How can (a)
-find and (b) definte for efficient calcuation the curves that result from
+find and (b) define for efficient calculation of the curves that result from
 intersecting two faces?
 
 - [x] Parametric curves and surfaces [100% (ish)]

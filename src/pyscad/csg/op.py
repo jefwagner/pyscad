@@ -24,26 +24,58 @@ from .csg import Csg
 class Op(Csg):
     """CSG Operator abstract base class"""
     children: list[Csg]
- 
+    aop = '#'
+    uop = '\u220E'
+
     def __init__(self, *children: Csg):
         """Create a new Op object"""
         super().__init__()
         self.children = []
+        if len(children) < 2:
+            raise TypeError(f'Operators require at least 2 operands')
         for child in children:
             if not isinstance(child, Csg):
-                raise ValueError(f'CSG operators only act CSG objects')
+                raise TypeError(f'CSG operators only act CSG objects')
             self.children.append(child)
+
+    @staticmethod
+    def wrap(x) -> str:
+        """"""
+        return f'({x})' if isinstance(x, Op) else f'{x}'
+
+    def __repr__(self) -> str:
+        """"""
+        rep = self.wrap(self.children[0])
+        for child in self.children[1:]:
+            rep += f' {self.aop} {self.wrap(child)}'
+        return rep
+
 
 class Union(Op):
     """A CSG Union operator"""
-    ...
-
-class Diff(Op):
-    """A CSG Difference operator"""
-    ...
+    aop = 'U'
+    uop = '\u222A'
 
 class IntXn(Op):
     """A CSG Intersection operator"""
-    ...
+    aop = 'X'
+    uop = '\u2229'
 
+class Diff(Op):
+    """A CSG Difference operator"""
+    aop = '\\'
+    uop = '\u2216'
 
+    def __repr__(self) -> str:
+        """"""
+        if len(self.children) == 2:
+            c0, c1 = self.children
+            rep = f'{self.wrap(c0)} {self.aop} {self.wrap(c1)}'
+        else:
+            c0 = f'{self.wrap(self.children[0])}'
+            c1 = f'({self.wrap(self.children[1])}'
+            for child in self.children[2:]:
+                c1 += f' {Union.aop} {self.wrap(child)}'
+            c1 += ')'
+            rep = f'{c0} {self.aop} {c1}'
+        return rep

@@ -34,6 +34,8 @@ class Prim(Csg):
         self.pos = np.array(pos, dtype=flint)
         self.trans = [Translate(self.pos)]
 
+    def __repr__(self) -> str:
+        return self.__class__.__name__
 
 class Sphere(Prim):
     """A CSG Sphere primitive"""
