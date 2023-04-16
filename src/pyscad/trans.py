@@ -84,27 +84,7 @@ class Transform:
             return False
         return np.alltrue(self.m == other.m) and np.alltrue(self.v == other.v)
 
-    def ser(self) -> dict:
-        """Build a python dict for JSON serialization"""
-        state = dict()
-        state['__class__'] = self.__class__.__name__
-        state['m'] = array_ser(self.m)
-        state['v'] = array_ser(self.v)
-        return state
-
-    @staticmethod
-    def deser(ser: dict) -> 'Transform':
-        """Build a transform from a serialized dict object"""
-        if not isinstance(ser, dict):
-            raise TypeError("Can only deserialized from a python dict object")
-        if '__class__' not in ser.keys():
-            ValueError("Dict object must a have '__class__' attribute")
-        m = array_deser(ser['m'])
-        v = array_deser(ser['v'])
-        t = globals()[ser['__class__']].from_arrays(m, v)
-        return t
-
-
+ 
 class Scale(Transform):
     """Scale"""
 
@@ -171,7 +151,7 @@ class Rotate(Transform):
             c, s = np.cos(th), np.sin(th)
             self.m = np.array([
                 [c+x*x*(1-c), x*y*(1-c)-z*s, x*z*(1-c)+y*s],
-                [y*z*(1-c)+z*s, c+y*y*(1-c), y*z*(1-c)-x*s],
+                [y*x*(1-c)+z*s, c+y*y*(1-c), y*z*(1-c)-x*s],
                 [z*x*(1-c)-y*s, z*y*(1-c)+x*s, c+z*z*(1-c)]
             ], dtype=flint)
             self.v = np.zeros(3, dtype=flint)

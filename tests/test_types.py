@@ -57,31 +57,3 @@ class TestTypes:
         assert is_point(np.array([1,2], dtype=flint))
         assert not is_point([1,2,3,4])
         assert not is_point('foo')
-
-
-class TestJson:
-    """Validate the serialization for numbers and arrays"""
-
-    def test_num(self):
-        assert num_ser(2) == 2
-        assert num_ser(flint(2)) == {'a': 2, 'b': 2, 'v': 2}
-        with pytest.raises(TypeError):
-            num_ser('foo')
-        with pytest.raises(TypeError):
-            num_ser(np.array([1,2,3]))
-    
-    def test_array(self):
-        with pytest.raises(TypeError):
-            array_ser('foo')
-        with pytest.raises(TypeError):
-            array_ser(2)
-        with pytest.raises(TypeError):
-            array_ser([1,2])
-        a = [1,2]
-        assert array_ser(np.array(a)) == a
-        a = [[1,2],[3,4]]
-        assert array_ser(np.array(a)) == a
-        fa = [[{'a': np.nextafter(i,-np.inf), 
-                'b': np.nextafter(i,np.inf), 
-                'v': i} for i in row] for row in a]
-        assert array_ser(np.array(a, dtype=flint)) == fa

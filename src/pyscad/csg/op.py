@@ -34,12 +34,6 @@ class Op(Csg):
                 raise ValueError(f'CSG operators only act CSG objects')
             self.children.append(child)
 
-    def ser(self) -> Dict:
-        """Build a python dict for JSON serialization"""
-        state = super().ser()
-        state['children'] = [child.ser() for child in self.children]
-
-
 class Union(Op):
     """A CSG Union operator"""
     ...

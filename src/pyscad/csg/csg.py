@@ -20,20 +20,30 @@ Contains the constructive solid geometry (CSG) base class and methods
 
 from typing import Union, Any, Optional
 
-from .types import *
-from .trans import Transform, Scale, Translate, Rotate
+from ..types import *
+from ..trans import Transform, Scale, Translate, Rotate
 
 
 class Csg:
     """Constructive Solid Geometry (CSG) abstract base class"""
     trans: list[Transform] # All CSG objects can have their own list of transforms
     params: list[str] # A list of parameter names used for serialization
-    meta: dict(str, Any) # Extra metadata can be supplied for each object
+    meta: dict[str, Any] # Extra metadata can be supplied for each object
 
     def __init__(self):
+        """Create a new CSG object with the required members"""
         self.trans = []
         self.params = []
         self.meta = {}
+
+    @classmethod
+    def _noargs(cls):
+        """Create a new object with the required members"""
+        csg = cls.__new__()
+        csg.trans = []
+        csg.params = []
+        csg.meta = {}
+        return csg
 
     #
     # Method for adding transformations to a CSG object
@@ -41,7 +51,7 @@ class Csg:
     # All methods return a copy of self so that they can be chained together
     # using a builder pattern.`
     #
-    def scale(self, size: Union[Number, Vec]) -> 'Csg':
+    def scale(self, size: Union[Num, Vec]) -> 'Csg':
         """Apply a scaling transformation"""
         self.trans.append(Scale(size))
         return self
@@ -51,9 +61,9 @@ class Csg:
         self.trans.append(Translate(dx))
         return self
 
-    def rot(self, angle: Num, angle: Optional[Vec] = None) -> 'Csg':
+    def rot(self, angle: Num, axis: Optional[Vec] = None) -> 'Csg':
         """Apply a rotation transformation around arbitrary axis"""
-        self.trans.append(Rotate(angle, angle))
+        self.trans.append(Rotate(angle, axis))
         return self
     
     def rotx(self, angle: Num) -> 'Csg':
@@ -84,28 +94,6 @@ class Csg:
         """Add metadata to the CSG object"""
         self.meta[key] = value
         return self
-
-    def ser(self) -> dict:
-        """Build a python dict for JSON serialization"""
-        # Start off with object type
-        state = dict()
-        state['__module__'] = self.__module__
-        state['__class__'] = self.__class__.__name__
-        # Then Include the list of transforms
-        state['trans'] = [t.ser() for t in self.trans]
-        # Next add all object specific parameters
-        params = {}
-        for param_name in self.params:
-            param_val = getattr(self, param_name)
-            if isinstance(param_val, np.ndarray):
-                param_ser = array_ser(param_val)
-            else:
-                param_ser = num_ser(param_val)
-            params[p] = param_ser
-        state['params'] = params
-        # # Finally include meta-data
-        # state['meta'] = self.meta
-        return state
 
         
 
