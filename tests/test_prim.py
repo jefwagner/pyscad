@@ -23,7 +23,8 @@ import pytest
 import numpy as np
 from flint import flint
 
-from pyscad.csg.prim import *
+from pyscad.csg import Csg, Sphere, Box, Cyl, Cone
+from pyscad.csg.prim import Prim
 from pyscad.trans import *
 
 class TestPrimitives:
