@@ -19,6 +19,7 @@ Contains the constructive solid geometry (CSG) operator classes and methods
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
 from .csg import Csg
+from ..brep import BRep
 
 
 class Op(Csg):

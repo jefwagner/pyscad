@@ -22,7 +22,7 @@ from typing import Union, Any, Optional
 
 from ..types import *
 from ..trans import Transform, Scale, Translate, Rotate
-
+from ..brep import BRep
 
 class Csg:
     """Constructive Solid Geometry (CSG) abstract base class"""
@@ -35,6 +35,7 @@ class Csg:
         self.trans = []
         self.params = []
         self.meta = {}
+        self._brep = None
 
     @classmethod
     def _noargs(cls):
@@ -44,6 +45,22 @@ class Csg:
         csg.params = []
         csg.meta = {}
         return csg
+
+    def add_metadata(self, key: str, value: Any) -> 'Csg':
+        """Add metadata to the CSG object"""
+        self.meta[key] = value
+        return self
+
+    @property
+    def brep(self) -> BRep:
+        """The b-rep of the surface"""
+        if self._brep is None:
+            self.construct_brep()
+        return self._brep
+
+    def construct_brep(self):
+        """Construct the b-rep"""
+        raise NotImplementedError("Boo")
 
     #
     # Method for adding transformations to a CSG object
@@ -88,11 +105,6 @@ class Csg:
             Rotate(beta, (1,0,0)),
             Rotate(gamma, (0,0,1))
         ])
-        return self
-
-    def add_metadata(self, key: str, value: Any) -> 'Csg':
-        """Add metadata to the CSG object"""
-        self.meta[key] = value
         return self
 
         
