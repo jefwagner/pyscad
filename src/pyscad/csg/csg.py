@@ -84,9 +84,9 @@ class Csg:
     def rotzxz(self, alpha: Num, beta: Num, gamma: Num) -> 'Csg':
         """Apply rotation transformations using ZXZ euler angles"""
         self.trans.extend([
-            Rotate((0,0,1), alpha),
-            Rotate((1,0,0), beta),
-            Rotate((0,0,1), gamma)
+            Rotate(alpha,(0,0,1)),
+            Rotate(beta, (1,0,0)),
+            Rotate(gamma, (0,0,1))
         ])
         return self
 
