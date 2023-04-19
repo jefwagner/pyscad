@@ -29,6 +29,67 @@ from pyscad.csg import Union as Uni
 from pyscad.trans import *
 
 
+class TestTrans:
+
+    def test_scale(self):
+        csg = Csg()
+        csg.scale(1)
+        assert len(csg.trans) == 1
+        s = csg.trans[0]
+        assert isinstance(s, Scale)
+        assert s == Scale(1)
+        csg = Csg()
+        csg.scale([1,2,3])
+        s = csg.trans[0]
+        assert isinstance(s, Scale)
+        assert s == Scale([1,2,3])
+        with pytest.raises(TypeError):
+            csg.scale('foo')
+
+    def test_move(self):
+        csg = Csg()
+        csg.move([1,2,3])
+        assert len(csg.trans) == 1
+        t = csg.trans[0]
+        assert isinstance(t, Translate)
+        assert t == Tranlaste([1,2,3])
+        with pytest.raises(TypeError):
+            csg.move(1)
+
+    def test_rot(self):
+        csg = Csg()
+        csg.rot(2*np.pi/3, [1,1,1])
+        assert len(csg.trans) == 1
+        r = csg.trans[0]
+        assert isinstance(r, Rotate)
+        assert r == Rotate(2*np.pi/3, [1,1,1])
+        with pytest.raises(TypeError):
+            csg.rot([2,3])
+
+    def test_rot_axis(self):
+        csg = Csg()
+        csg.rotx(np.pi/4)
+        r = csg.trans[0]
+        assert r == Rotate(np.pi/4, [1,0,0])
+        csg = Csg()
+        csg.roty(np.pi/4)
+        r = csg.trans[0]
+        assert r == Rotate(np.pi/4, [0,1,0])
+        csg = Csg()
+        csg.rotz(np.pi/4)
+        r = csg.trans[0]
+        assert r == Rotate(np.pi/4, [0,0,1])
+    
+    def test_rot_euler(self):
+        csg = Csg()
+        csg.rotzxz(np.pi/6, np.pi/4, np.pi/3)
+        assert len(csg.trans) == 3
+        r0, r1, r2 = csg.trans
+        assert r0 == Rotate(np.pi/6, [0,0,1])
+        assert r1 == Rotate(np.pi/4, [1,0,0])
+        assert r2 == Rotate(np.pi/3, [0,0,1])
+
+
 class TestOperator:
 
     def test_union(self):
