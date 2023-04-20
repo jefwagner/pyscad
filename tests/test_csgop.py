@@ -52,7 +52,7 @@ class TestTrans:
         assert len(csg.trans) == 1
         t = csg.trans[0]
         assert isinstance(t, Translate)
-        assert t == Tranlaste([1,2,3])
+        assert t == Translate([1,2,3])
         with pytest.raises(TypeError):
             csg.move(1)
 
