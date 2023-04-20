@@ -25,8 +25,8 @@ from ..geo import ParaCurve
 
 class EdOri(Enum):
     """Edge Orientation"""
-    FOR
-    REV
+    FOR = 0
+    REV = 1
 
 class Edge:
     """Boo"""

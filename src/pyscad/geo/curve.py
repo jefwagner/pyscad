@@ -18,10 +18,12 @@ Space curve base class
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
+from ..types import *
+
 class ParaCurve:
     """A parametric surface from t in [0,1] to R^3"""
 
-    def __call(self, t: Num) -> Point:
+    def __call__(self, t: Num) -> Point:
         raise NotImplementedError("Virtual method, must redefine")
 
     def d(self, t: Num, n: int) -> Point:

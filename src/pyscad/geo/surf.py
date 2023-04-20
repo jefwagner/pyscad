@@ -1,5 +1,4 @@
 ## @file surf.py 
-## @file surf.py 
 """\
 Space surface base class
 """
@@ -19,10 +18,12 @@ Space surface base class
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
+from ..types import *
+
 class ParaSurf:
     """A parametric surface from u,v to R^3"""
 
-    def __call(self, u: Num, v: Num) -> Point:
+    def __call__(self, u: Num, v: Num) -> Point:
         raise NotImplementedError("Virtual method, must redefine")
 
     def d(self, u: Num, v: Num, nu: int, nv: int) -> Point:
