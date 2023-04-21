@@ -1,6 +1,6 @@
-## @file test_kvec.py 
+## @file spline/__init__.py 
 """\
-Validate knot-vector behavior.
+Spline related classes
 """
 # Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
 #
@@ -18,23 +18,6 @@ Validate knot-vector behavior.
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-import pytest
-
-import numpy as np
-from flint import flint
-
-from pyscad.geo.spline.kvec import KnotVector, KnotMatrix
-
-class TestKnotVector:
-    """Validate knot vector behavior"""
-
-    def test_init(self):
-        tv = KnotVector([0,0,0,0.5,1,1,1])
-        assert isinstance(tv, KnotVector)
-        assert isinstance(tv.t, np.ndarray)
-        assert tv.t.dtype == flint
-        assert len(tv.t) == 7
-
-    def test_init_exception(self):
-        with pytest.raises(ValueError):
-            tv = KnotVector([1,0])
+from .kvec import KnotVector, KnotMatrix
+# from .bspline import BSplineCurve, BSplineSurf
+# from .nurbs import NurbsCurve, NurbsSurf

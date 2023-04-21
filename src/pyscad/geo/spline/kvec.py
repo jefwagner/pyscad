@@ -24,7 +24,7 @@ import numpy.typing as npt
 import numpy as np
 from flint import flint
 
-from ..types import *
+from ...types import *
 
 class KnotVector:
     """Basis spline knot vector"""
@@ -75,14 +75,17 @@ class KnotVector:
         k = np.searchsorted(self.t, x, side='right')-1
         return np.clip(k, self.kmin, self.kmax)
         
-    @staticmethod
-    def q0(c: npt.NDArray[Point], i: int) -> Point:
-        """Convenience function for extending a sequence beyond its limits with 0s""" 
-        return 0*c[0] if (i < 0 or i >= len(c)) else c[i]    
+    def q0(self, c: npt.NDArray[Point], p: int, k: int) -> npt.NDArray[Point]:
+        """Construct the first Q array used in evaluation of a basis spline
+        @param c The array of control points
+        @param p The degree of the b-spline
+        @param k The index of the q array
+        """
+        0*c[0] if (i < 0 or i >= len(c)) else c[i]
 
     def deboor(self, c: npt.NDArray[Point], p: int,  x: Num) -> Point:
         """Evaluate a b-spline on the knot-vector at a parametric Non-Vectorized
-        @param c The sequence of control points
+        @param c The array of control points
         @param p The degree of the b-spline 
         @param x The value of parametric argument to the b-spline
         @return The D-dimensional point on the b-spline. Note: if x is outside the range
