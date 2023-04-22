@@ -18,6 +18,6 @@ Spline related classes
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-from .kvec import KnotVector, KnotMatrix
-# from .bspline import BSplineCurve, BSplineSurf
+from .kvec import KnotVector
+from .bspline import BSplineCurve#, BSplineSurf
 # from .nurbs import NurbsCurve, NurbsSurf

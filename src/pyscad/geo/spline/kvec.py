@@ -57,11 +57,11 @@ class KnotVector:
         """Length of the knot vector"""
         return len(self.t)
 
-    def __getitem__(self, i: int) -> float:
+    def __getitem__(self, i: int) -> flint:
         """Get the i^th knot"""
         return self.t[i]
 
-    def __iter__(self) -> Iterator[float]:
+    def __iter__(self) -> Iterator[flint]:
         """Iterate over the knots"""
         return iter(self.t)
 
@@ -74,58 +74,4 @@ class KnotVector:
         """
         k = np.searchsorted(self.t, x, side='right')-1
         return np.clip(k, self.kmin, self.kmax)
-        
-    def q0(self, c: npt.NDArray[Point], p: int, k: int) -> npt.NDArray[Point]:
-        """Construct the first Q array used in evaluation of a basis spline
-        @param c The array of control points
-        @param p The degree of the b-spline
-        @param k The index of the q array
-        """
-        0*c[0] if (i < 0 or i >= len(c)) else c[i]
 
-    def deboor(self, c: npt.NDArray[Point], p: int,  x: Num) -> Point:
-        """Evaluate a b-spline on the knot-vector at a parametric Non-Vectorized
-        @param c The array of control points
-        @param p The degree of the b-spline 
-        @param x The value of parametric argument to the b-spline
-        @return The D-dimensional point on the b-spline. Note: if x is outside the range
-        of the knot vector it is evaluated using the b-spline basis polynomial for the
-        first or last non-zero interval in the knot-vector.
-        """
-        k = self.k(x)
-        q = np.array([self.q0(c, k-r) for r in range(p,-1,-1)])
-        for r in range(p):
-            for j in range(p,r,-1):
-                l, m = np.clip((j+k-p, j+k-r),0,len(self.t)-1)
-                a = (x-self.t[l])/(self.t[m]-self.t[l])
-                q[j] = a*q[j] + (1-a)*q[j-1]
-        return q[p]
-
-
-class KnotMatrix:
-    """2 knot vectors used in a direct product b-spline surface"""
-
-    def __init__(self, tu: Sequence[Num], tv: Sequence[Num]):
-        """Create a new knot-matrix object
-        @param tu The knot-vector in the u-direction
-        @param tv The knot-vector in the v-direction
-        """
-        self.tu = KnotVector(tu)
-        self.tv = KnotVector(tv)
-        self.shape = (len(self.tu), len(self.tv))
-
-    def deboor(self, c: npt.NDArray[Point],
-               pu: int, pv: int, u: Num, v: Num) -> Point:
-        """Evaluate a direct product b-spline surface
-        @param c The 2-d array of control points for a spline surface
-        @param pu The degree of the spline in the u-direction
-        @param pv The degree of the spline in the v-direction
-        @param u The u parameter
-        @param v The v parameter
-        @return The value of the surface at the parametric point (u,v)
-        """
-        c = np.array(c)
-        cj = np.empty_like(c[:,0])
-        for i in range(len(c)):
-            cj[i] = self.tv.deboor(c[i], pv, v)
-        return self.tu.deboor(cj, pu, u)
