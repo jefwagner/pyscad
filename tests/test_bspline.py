@@ -36,15 +36,37 @@ def simple_basis(t:float) -> float:
     else:
         return 0.5*(3-t)*(3-t)
 
-class TestBSpline:
-    """Validate basis spline behavior"""
+def simple_basis_d1(t:float) -> float:
+    """first derivative of the basis function of degree 2 for knot-vector (0,1,2,3)"""
+    if t < 1:
+        return 1.0*t
+    elif t < 2:
+        return -2.0*t+3
+    else:
+        return t-3.0
+
+def simple_basis_d2(t:float) -> float:
+    """second derivative of the basis function of degree 2 for knot-vector (0,1,2,3)"""
+    if t < 1:
+        return 1.0
+    elif t < 2:
+        return -2.0
+    else:
+        return 1.0
+
+
+class TestBSplineCurveInternal:
+    """Validate basis spline internal methods"""
 
     def test_init(self):
         bs = BSplineCurve([1], 2, [0,1,2,3])
         assert isinstance(bs, ParaCurve)
         assert isinstance(bs, BSplineCurve)
-        assert isinstance(bs.c, np.ndarray)
-        assert bs.c.dtype == flint
+        assert isinstance(bs.c, list)
+        assert len(bs.c) == 3
+        c = bs.c[0]
+        assert isinstance(c, np.ndarray)
+        assert c.dtype == flint
         assert isinstance(bs.t, KnotVector)
 
     def test_deboor(self):
@@ -53,12 +75,26 @@ class TestBSpline:
         for x in np.linspace(0,3,41):
             assert bs._deboor_1d(c, x) == simple_basis(x)
 
-    def test_scalespline_call_scalar(self):
+    def test_calc_d_cpts_1(self):
+        bs = BSplineCurve([1], 2, [0,1,2,3])
+        bs._calc_d_cpts(1)
+        assert np.alltrue( bs.c[1] == np.array([1,-1]) )
+
+    def test_calc_d_cpts_2(self):
+        bs = BSplineCurve([1], 2, [0,1,2,3])
+        bs._calc_d_cpts(2)
+        assert np.alltrue( bs.c[2] == np.array([1,-2,1]) )
+
+
+class TestBSplineCurveEval:
+    """Validate the evaluation of the b-spline curve"""
+
+    def test_scalar_spline_call_scalar(self):
         bs = BSplineCurve([1], 2, [0,1,2,3])
         for x in np.linspace(0,3,41):
             assert bs(x) == simple_basis(x)
         
-    def test_scalarspline_call_array(self):
+    def test_scalar_spline_call_array(self):
         bs = BSplineCurve([1], 2, [0,1,2,3])
         t = np.linspace(0,3,40).reshape((4,10))
         res = bs(t)
@@ -66,13 +102,13 @@ class TestBSpline:
             for x in it:
                 assert res[it.multi_index] == simple_basis(x)
 
-    def test_pointspline_call_scalar(self):
+    def test_point_spline_call_scalar(self):
         bs = BSplineCurve([[1,-1,0.1]], 2, [0,1,2,3])
         for x in np.linspace(0,3,41):
             sb = simple_basis(x)
             assert np.alltrue( bs(x) == sb*np.array([1,-1,0.1]))
  
-    def test_pointspline_call_array(self):
+    def test_point_spline_call_array(self):
         bs = BSplineCurve([[1,-1,0.1]], 2, [0,1,2,3])
         t = np.linspace(0,3,40).reshape((4,10))
         res = bs(t)
@@ -81,3 +117,62 @@ class TestBSpline:
                 target = simple_basis(x)*np.array([1.0,-1.0,0.1])
                 assert np.alltrue( res[it.multi_index] == target )
 
+
+class TestBSplineCurveEval:
+    """Validate the evaluation of the b-spline curve"""
+
+    def test_scalar_spline_d1_scalar(self):
+        bs = BSplineCurve([1], 2, [0,1,2,3])
+        for x in np.linspace(0,3,41):
+            assert bs.d(x) == simple_basis_d1(x)
+
+    def test_scalar_spline_d2_scalar(self):
+        bs = BSplineCurve([1], 2, [0,1,2,3])
+        for x in np.linspace(0,3,41):
+            assert bs.d(x,2) == simple_basis_d2(x)
+
+    def test_scalar_spline_d1_array(self):
+        bs = BSplineCurve([1], 2, [0,1,2,3])
+        t = np.linspace(0,3,40).reshape((4,10))
+        res = bs.d(t)
+        with np.nditer(t, flags=['multi_index']) as it:
+            for x in it:
+                assert res[it.multi_index] == simple_basis_d1(x)
+
+    def test_scalar_spline_d2_array(self):
+        bs = BSplineCurve([1], 2, [0,1,2,3])
+        t = np.linspace(0,3,40).reshape((4,10))
+        res = bs.d(t, 2)
+        with np.nditer(t, flags=['multi_index']) as it:
+            for x in it:
+                assert res[it.multi_index] == simple_basis_d2(x)
+
+    def test_point_spline_d1_scalar(self):
+        bs = BSplineCurve([[1,-1,0.1]], 2, [0,1,2,3])
+        for x in np.linspace(0,3,41):
+            sbd = simple_basis_d1(x)
+            assert np.alltrue( bs.d(x) == sbd*np.array([1,-1,0.1]))
+
+    def test_point_spline_d2_scalar(self):
+        bs = BSplineCurve([[1,-1,0.1]], 2, [0,1,2,3])
+        for x in np.linspace(0,3,41):
+            sbd = simple_basis_d2(x)
+            assert np.alltrue( bs.d(x,2) == sbd*np.array([1,-1,0.1]))
+
+    def test_point_spline_d1_array(self):
+        bs = BSplineCurve([[1,-1,0.1]], 2, [0,1,2,3])
+        t = np.linspace(0,3,40).reshape((4,10))
+        res = bs.d(t)
+        with np.nditer(t, flags=['multi_index']) as it:
+            for x in it:
+                sbd = simple_basis_d1(x)
+                assert np.alltrue( res[it.multi_index] == sbd*np.array([1,-1,0.1]) )
+
+    def test_point_spline_d2_array(self):
+        bs = BSplineCurve([[1,-1,0.1]], 2, [0,1,2,3])
+        t = np.linspace(0,3,40).reshape((4,10))
+        res = bs.d(t,2)
+        with np.nditer(t, flags=['multi_index']) as it:
+            for x in it:
+                sbd = simple_basis_d2(x)
+                assert np.alltrue( res[it.multi_index] == sbd*np.array([1,-1,0.1]) )
