@@ -147,7 +147,7 @@ class Rotate(Transform):
             self.v = np.zeros(2, dtype=flint)
         elif is_vec(axis) and len(axis) == 3:
             u = np.array(axis, dtype=flint)
-            x, y, z = u/np.sqrt(np.sum(u*u))
+            x, y, z = u/mag(u)
             c, s = np.cos(th), np.sin(th)
             self.m = np.array([
                 [c+x*x*(1-c), x*y*(1-c)-z*s, x*z*(1-c)+y*s],

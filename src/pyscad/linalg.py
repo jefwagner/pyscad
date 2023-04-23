@@ -66,10 +66,10 @@ def eig2(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:
             if np.alltrue(eigvecs[1] == np.zeros(2, dtype=flint)):
                 eigvecs[0] = (a-eigvals[0]*np.eye(2, dtype=flint))[:,1]
             if eigvecs[0,0] > 0 or (eigvecs[0,0] == 0 and eigvecs[0,1] > 0):
-                norm = np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+                norm = mag(eigvecs[0])
             else:
-                norm = -np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
-            eigvecs[0] /= np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+                norm = -mag(eigvecs[0])
+            eigvecs[0] /= norm
             eigvecs[1,0] = -eigvecs[0,1]
             eigvecs[1,1] = eigvecs[0,0]
         return eigvals, eigvecs
@@ -138,9 +138,9 @@ def find_vecs3(a: npt.NDArray, eigvals: npt.NDArray) -> npt.NDArray:
         if (eigvecs[0,0] > 0 or
             (eigvecs[0,0] == 0 and eigvecs[0,1] > 0) or
             (eigvecs[0,0] == 0 and eigvecs[0,1] == 0 and eigvecs[0,2] > 0)):
-            norm = np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+            norm = mag(eigvecs[0])
         else:
-            norm = -np.sqrt(np.sum(eigvecs[0]*eigvecs[0]))
+            norm = -mag(eigvecs[0])
         eigvecs[0] /= norm
         # Make sure last eigenvector is orthogonal
         eigvecs[2] -= eigvecs[2].dot(eigvecs[0])*eigvecs[0]
@@ -148,9 +148,9 @@ def find_vecs3(a: npt.NDArray, eigvals: npt.NDArray) -> npt.NDArray:
         if (eigvecs[2,0] > 0 or
             (eigvecs[2,0] == 0 and eigvecs[2,1] > 0) or
             (eigvecs[2,0] == 0 and eigvecs[2,1] == 0 and eigvecs[2,2] > 0)):
-            norm = np.sqrt(np.sum(eigvecs[2]*eigvecs[2]))
+            norm = mag(eigvecs[2])
         else:
-            norm = -np.sqrt(np.sum(eigvecs[2]*eigvecs[2]))
+            norm = -mag(eigvecs[2])
         eigvecs[2] /= norm
         # Use cross product to get last eigenvector
         eigvecs[1] = np.cross(eigvecs[2], eigvecs[0])
@@ -171,7 +171,7 @@ def refine_vec3(a: npt.NDArray, q: npt.NDArray) -> npt.NDArray:
     q += q.dot(e)
     q = q.T.copy()
     for i, v in enumerate(q):
-        q[i] /= np.sqrt(np.sum(v*v))
+        q[i] /= mag(v)
     return q
 
 def eig(a: npt.NDArray) -> Tuple[npt.NDArray, npt.NDArray]:

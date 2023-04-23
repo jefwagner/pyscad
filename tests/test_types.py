@@ -57,3 +57,9 @@ class TestTypes:
         assert is_point(np.array([1,2], dtype=flint))
         assert not is_point([1,2,3,4])
         assert not is_point('foo')
+
+    def test_mag(self):
+        assert mag(2) == 2
+        assert mag(-2) == 2
+        assert mag(np.array([3,4],dtype=flint)) == 5
+
