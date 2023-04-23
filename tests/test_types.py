@@ -62,4 +62,11 @@ class TestTypes:
         assert mag(2) == 2
         assert mag(-2) == 2
         assert mag(np.array([3,4],dtype=flint)) == 5
-
+        pts = np.array([
+            [[i+1,j+i] for j in range(5)] for i in range(4)
+        ], dtype=flint)
+        mags = mag(pts)
+        assert mags.shape == pts.shape[:-1]
+        with np.nditer(mags, flags=['multi_index']) as it:
+            for m in it:
+                assert mag(pts[it.multi_index]) == m

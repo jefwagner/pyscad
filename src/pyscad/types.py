@@ -67,8 +67,8 @@ def is_point(a: Any) -> bool:
     return is_num(a) or is_vec(a) or is_vec(a, length=1)
 
 def mag(v: Point) -> Num:
-    """Calculate the magintude of a vector
+    """Calculate the magnitude of a vector
     @param v Input vector
     @return The magnitude (aka Euclidean norm or L-2 norm)
     """
-    return np.sqrt(np.sum(v*v))
+    return np.sqrt(np.sum(v*v, axis=-1))
