@@ -23,6 +23,14 @@ from typing import Sequence
 from ...types import *
 from .bspline import BSplineCurve
 
+_binom = np.array([
+    [1,0,0,0,0],
+    [1,1,0,0,0],
+    [1,2,1,0,0],
+    [1,3,3,1,0],
+    [1,4,6,4,1],
+])
+
 class NurbsCurve(BSplineCurve):
     """Non-Uniform Rational Basis Spline (NURBS) space curve"""
 
@@ -66,13 +74,13 @@ class NurbsCurve(BSplineCurve):
         """
         c = self.c[0]
         w = self.w[0]
-        wc = c*w
+        wc = c*w[...,np.newaxis]
         out_shape = list(np.shape(x)) + list(np.shape(c[0]))
         out_array = np.zeros(out_shape, dtype=flint)
         with np.nditer(x, flags=['multi_index']) as it:
             for xx in it:
+                cc = self._deboor_1d(wc, xx)
                 ww = self._deboor_1d(w, xx)
-                wc = self._deboor_1d(wc, xx)
                 out_array[it.multi_index] = (cc if ww==0 else cc/ww)
         return out_array
 
@@ -88,24 +96,24 @@ class NurbsCurve(BSplineCurve):
             for xx in it:
                 c = self.c[0]
                 w = self.w[0]
-                wc = c*w
+                wc = c*w[...,np.newaxis]
                 c_list = [self._deboor_1d(c, xs)]
                 w_list = [self._deboor_1d(w, xx)]
-                s_list = [c_list[0]/w_list[0]]
+                s_list = [c_list[0]/(w_list[0] if w_list[0] != 0 else 1)]
                 for i in range(1,n):
                     if self.c[i] is None:
                         self._calc_d_cpts(i)
                     if self.w[i] in None:
                         self._calc_d_weights(i)
-                    c = self.c[0]
-                    w = self.w[0]
-                    wc = c*w
+                    c = self.c[i]
+                    w = self.w[i]
+                    wc = c*w[...,np.newaxis]
                     c_list.append(self._deboor_1d(wc, xx, i))
                     w_list.append(self._deboor_1d(w, xx, i))
                     res = c_list[-1]
                     for k in range(1,i+2):
-                        res -= self._binom[i+1,k]*(s_list[i+1-k]*w_list[k])
-                    s_list.append(res/w_list[0])
+                        res -= _binom[i+1,k]*(s_list[i+1-k]*w_list[k])
+                        s_list.append(res/(w_list[0] if w_list[0] != 0 else 1))
                 out_array[it.multi_index] = s_list[-1]
         return out_array
 

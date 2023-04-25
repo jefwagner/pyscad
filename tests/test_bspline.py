@@ -69,6 +69,10 @@ class TestBSplineCurveInternal:
         assert c.dtype == flint
         assert isinstance(bs.t, KnotVector)
 
+    def test_exceptions(self):
+        with pytest.raises(ValueError):
+            bs = BSplineCurve([1],2,[1,2,3])
+
     def test_deboor(self):
         c = np.array([1], dtype=flint)
         bs = BSplineCurve(c, 2, [0,1,2,3])
@@ -77,11 +81,13 @@ class TestBSplineCurveInternal:
 
     def test_calc_d_cpts_1(self):
         bs = BSplineCurve([1], 2, [0,1,2,3])
+        assert bs.c[1] is None
         bs._calc_d_cpts(1)
         assert np.alltrue( bs.c[1] == np.array([1,-1]) )
 
     def test_calc_d_cpts_2(self):
         bs = BSplineCurve([1], 2, [0,1,2,3])
+        assert bs.c[2] is None
         bs._calc_d_cpts(2)
         assert np.alltrue( bs.c[2] == np.array([1,-2,1]) )
 
