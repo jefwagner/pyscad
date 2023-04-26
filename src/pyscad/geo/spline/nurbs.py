@@ -45,7 +45,8 @@ class NurbsCurve(BSplineCurve):
         @param p Degree of the b-spline basis functions
         @param t The knot-vector
         """
-        super().__init__(c, p, t)
+        cw = np.array(c, dtype=flint)*np.array(w, dtype=flint)[...,np.newaxis]
+        super().__init__(cw, p, t)
         self.w = [np.array(w, dtype = flint)] + [None for _ in range(p)]
         if len(w) != len(self.c[0]):
             raise ValueError("Control points and weights be same length")
@@ -74,12 +75,12 @@ class NurbsCurve(BSplineCurve):
         """
         c = self.c[0]
         w = self.w[0]
-        wc = c*w[...,np.newaxis]
+        # wc = c*w[...,np.newaxis]
         out_shape = list(np.shape(x)) + list(np.shape(c[0]))
         out_array = np.zeros(out_shape, dtype=flint)
         with np.nditer(x, flags=['multi_index']) as it:
             for xx in it:
-                cc = self._deboor_1d(wc, xx)
+                cc = self._deboor_1d(c, xx)
                 ww = self._deboor_1d(w, xx)
                 out_array[it.multi_index] = (cc if ww==0 else cc/ww)
         return out_array
@@ -96,8 +97,8 @@ class NurbsCurve(BSplineCurve):
             for xx in it:
                 c = self.c[0]
                 w = self.w[0]
-                wc = c*w[...,np.newaxis]
-                c_list = [self._deboor_1d(wc, xx)]
+                # wc = c*w[...,np.newaxis]
+                c_list = [self._deboor_1d(c, xx)]
                 w_list = [self._deboor_1d(w, xx)]
                 s_list = [c_list[0]/(w_list[0] if w_list[0] != 0 else 1)]
                 print(f'c={c_list[0]}, w={w_list[0]}, s={s_list[0]}')
@@ -108,14 +109,13 @@ class NurbsCurve(BSplineCurve):
                         self._calc_d_weights(i)
                     c = self.c[i]
                     w = self.w[i]
-                    wc = c*w[...,np.newaxis]
-                    c_list.append(self._deboor_1d(wc, xx, i))
+                    # wc = c*w[...,np.newaxis]
+                    c_list.append(self._deboor_1d(c, xx, i))
                     w_list.append(self._deboor_1d(w, xx, i))
                     res = c_list[-1]
                     for k in range(1,i+1):
                         res -= _binom[i,k]*(s_list[i-k]*w_list[k])
                     s_list.append(res/(w_list[0] if w_list[0] != 0 else 1))
-                    print(f'c={c_list[-1]}, w={w_list[-1]}, s={s_list[-1]}')
                 out_array[it.multi_index] = s_list[-1]
         return out_array
 

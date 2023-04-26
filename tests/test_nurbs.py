@@ -91,8 +91,8 @@ class TestNurbsQuarterCircle:
             [0,0,0,1,1,1]
         )
         d = qc.d(0)
-        # assert d[0] == 0
+        assert d[0] == 0
         d = qc.d(0.5)
-        assert d[0] == d[1]
+        assert d[0] == -d[1]
         d = qc.d(1)
         assert d[1] == 0
