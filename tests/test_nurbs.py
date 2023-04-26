@@ -83,3 +83,16 @@ class TestNurbsQuarterCircle:
         assert p.shape == (4,5,2)
         assert np.alltrue( mag(p) == np.ones((4,5)) )
  
+    def test_derivative(self):
+        qc = NurbsCurve(
+            [[1,0],[1,1],[0,1]],
+            [1,1/np.sqrt(2),1],
+            2,
+            [0,0,0,1,1,1]
+        )
+        d = qc.d(0)
+        # assert d[0] == 0
+        d = qc.d(0.5)
+        assert d[0] == d[1]
+        d = qc.d(1)
+        assert d[1] == 0

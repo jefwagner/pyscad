@@ -90,20 +90,21 @@ class NurbsCurve(BSplineCurve):
         @param n The order of the derivative
         @return The value of the derivative curve at the parametric point x
         """
-        out_shape = list(w_shape) + list(np.shape(c[0]))
+        out_shape = list(np.shape(x)) + list(np.shape(self.c[0][0]))
         out_array = np.zeros(out_shape, dtype=flint)
-        with np.nditer(x, flags['multi_index']) as it:
+        with np.nditer(x, flags=['multi_index']) as it:
             for xx in it:
                 c = self.c[0]
                 w = self.w[0]
                 wc = c*w[...,np.newaxis]
-                c_list = [self._deboor_1d(c, xs)]
+                c_list = [self._deboor_1d(wc, xx)]
                 w_list = [self._deboor_1d(w, xx)]
                 s_list = [c_list[0]/(w_list[0] if w_list[0] != 0 else 1)]
-                for i in range(1,n):
+                print(f'c={c_list[0]}, w={w_list[0]}, s={s_list[0]}')
+                for i in range(1,n+1):
                     if self.c[i] is None:
                         self._calc_d_cpts(i)
-                    if self.w[i] in None:
+                    if self.w[i] is None:
                         self._calc_d_weights(i)
                     c = self.c[i]
                     w = self.w[i]
@@ -111,9 +112,10 @@ class NurbsCurve(BSplineCurve):
                     c_list.append(self._deboor_1d(wc, xx, i))
                     w_list.append(self._deboor_1d(w, xx, i))
                     res = c_list[-1]
-                    for k in range(1,i+2):
-                        res -= _binom[i+1,k]*(s_list[i+1-k]*w_list[k])
-                        s_list.append(res/(w_list[0] if w_list[0] != 0 else 1))
+                    for k in range(1,i+1):
+                        res -= _binom[i,k]*(s_list[i-k]*w_list[k])
+                    s_list.append(res/(w_list[0] if w_list[0] != 0 else 1))
+                    print(f'c={c_list[-1]}, w={w_list[-1]}, s={s_list[-1]}')
                 out_array[it.multi_index] = s_list[-1]
         return out_array
 
