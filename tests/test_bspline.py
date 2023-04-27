@@ -62,11 +62,11 @@ class TestBSplineCurveInternal:
         bs = BSplineCurve([1], 2, [0,1,2,3])
         assert isinstance(bs, ParaCurve)
         assert isinstance(bs, BSplineCurve)
-        assert isinstance(bs.c, list)
-        assert len(bs.c) == 3
-        c = bs.c[0]
-        assert isinstance(c, np.ndarray)
-        assert c.dtype == flint
+        assert isinstance(bs.cpts, np.ndarray)
+        assert bs.cpts.dtype == flint
+        assert isinstance(bs.cpts_array, list)
+        assert len(bs.cpts_array) == 3
+        assert bs.p == 2
         assert isinstance(bs.t, KnotVector)
 
     def test_exceptions(self):
@@ -79,17 +79,20 @@ class TestBSplineCurveInternal:
         for x in np.linspace(0,3,41):
             assert bs._deboor_1d(c, x) == simple_basis(x)
 
-    def test_calc_d_cpts_1(self):
+    def test_calc_d_cpts(self):
         bs = BSplineCurve([1], 2, [0,1,2,3])
-        assert bs.c[1] is None
-        bs._calc_d_cpts(1)
-        assert np.alltrue( bs.c[1] == np.array([1,-1]) )
+        assert bs.cpts_array[1] is None
+        assert bs.cpts_array[2] is None
+        bs._calc_d_cpts(bs.cpts_array, 2)
+        assert np.alltrue( bs.cpts_array[1] == np.array([1,-1]) )
+        assert np.alltrue( bs.cpts_array[2] == np.array([1,-2,1]) )
 
-    def test_calc_d_cpts_2(self):
+    def test_calc_d_cpts_exceptsions(self):
         bs = BSplineCurve([1], 2, [0,1,2,3])
-        assert bs.c[2] is None
-        bs._calc_d_cpts(2)
-        assert np.alltrue( bs.c[2] == np.array([1,-2,1]) )
+        with pytest.raises(ValueError):
+            bs._calc_d_cpts(bs.cpts_array, 0)
+        with pytest.raises(ValueError):
+            bs._calc_d_cpts(bs.cpts_array, 3)
 
 
 class TestBSplineCurveEval:
@@ -124,7 +127,7 @@ class TestBSplineCurveEval:
                 assert np.alltrue( res[it.multi_index] == target )
 
 
-class TestBSplineCurveEval:
+class TestBSplineCurveDerivative:
     """Validate the evaluation of the b-spline curve"""
 
     def test_scalar_spline_d1_scalar(self):

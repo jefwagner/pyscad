@@ -38,23 +38,14 @@ class TestNurbsCurveInternal:
         assert isinstance(nc, ParaCurve)
         assert isinstance(nc, BSplineCurve)
         assert isinstance(nc, NurbsCurve)
-        assert isinstance(nc.w, list)
-        assert len(nc.w) == 3
-        w = nc.w[0]
-        assert isinstance(w, np.ndarray)
-        assert w.dtype == flint
+        assert isinstance(nc.weights, np.ndarray)
+        assert nc.weights.dtype == flint
+        assert isinstance(nc.w_array, list)
+        assert len(nc.w_array) == 3
 
     def test_exceptions(self):
         with pytest.raises(ValueError):
             NurbsCurve([1],[1,2],2,[0,1,2,3])
-
-    def test_calc_d_weights(self):
-        nc = NurbsCurve([1],[1],2,[0,1,2,3])
-        assert nc.w[1] is None
-        assert nc.w[2] is None
-        nc._calc_d_weights(2)
-        assert np.alltrue( nc.w[1] == np.array([1,-1]) )
-        assert np.alltrue( nc.w[2] == np.array([1,-2,1]) )
 
 
 class TestNurbsQuarterCircle:
@@ -83,7 +74,7 @@ class TestNurbsQuarterCircle:
         assert p.shape == (4,5,2)
         assert np.alltrue( mag(p) == np.ones((4,5)) )
  
-    def test_derivative(self):
+    def test_derivative_scalar(self):
         qc = NurbsCurve(
             [[1,0],[1,1],[0,1]],
             [1,1/np.sqrt(2),1],
@@ -96,3 +87,15 @@ class TestNurbsQuarterCircle:
         assert d[0] == -d[1]
         d = qc.d(1)
         assert d[1] == 0
+
+    def test_derivative_array(self):
+        qc = NurbsCurve(
+            [[1,0],[1,1],[0,1]],
+            [1,1/np.sqrt(2),1],
+            2,
+            [0,0,0,1,1,1]
+        )
+        d0, d1, d2 = qc.d([0,0.5,1])
+        assert d0[0] == 0
+        assert d1[0] == -d1[1]
+        assert d2[1] == 0

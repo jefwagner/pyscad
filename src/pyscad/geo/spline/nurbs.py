@@ -45,45 +45,13 @@ class NurbsCurve(BSplineCurve):
         @param p Degree of the b-spline basis functions
         @param t The knot-vector
         """
-        cw = np.array(c, dtype=flint)*np.array(w, dtype=flint)[...,np.newaxis]
-        super().__init__(cw, p, t)
-        self.w = [np.array(w, dtype = flint)] + [None for _ in range(p)]
-        if len(w) != len(self.c[0]):
+        if len(w) != len(c):
             raise ValueError("Control points and weights be same length")
-
-    def _calc_d_weights(self, n: int):
-        """Calculate the control points for the derivative spline
-        @param n
-        """
-        if self.w[n-1] is None:
-            self._calc_d_weights(n-1)
-        new_shape = list(self.w[n-1].shape)
-        new_shape[0] += 1
-        r = self.w[n-1].copy()
-        r.resize(new_shape)
-        p = self.p-(n-1)
-        for i in range(new_shape[0]-1,-1,-1):
-            dt = self.t[i+p]-self.t[i]
-            r_im1 = 0*r[0] if i-1 == -1 else r[i-1]
-            r[i] = 0*r[0] if dt == 0 else p*(r[i]-r_im1)/dt
-        self.w[n] = r
-
-    def __call__(self, x: Num) -> Point:
-        """Evaluate the spline curve at a parametric point
-        @param x The parametric point
-        @return The value of the spline at the parametric point x
-        """
-        c = self.c[0]
-        w = self.w[0]
-        # wc = c*w[...,np.newaxis]
-        out_shape = list(np.shape(x)) + list(np.shape(c[0]))
-        out_array = np.zeros(out_shape, dtype=flint)
-        with np.nditer(x, flags=['multi_index']) as it:
-            for xx in it:
-                cc = self._deboor_1d(c, xx)
-                ww = self._deboor_1d(w, xx)
-                out_array[it.multi_index] = (cc if ww==0 else cc/ww)
-        return out_array
+        super().__init__(c, p, t)
+        self.weights = np.array(w, dtype = flint)
+        cw = self.cpts*self.weights[...,np.newaxis]
+        self.cpts_array[0] = cw
+        self.w_array = [self.weights] + [None for _ in range(p)]
 
     def d(self, x: Num, n: int = 1) -> Point:
         """Evaluate the n^th order derivative of the spline curve
@@ -91,24 +59,21 @@ class NurbsCurve(BSplineCurve):
         @param n The order of the derivative
         @return The value of the derivative curve at the parametric point x
         """
-        out_shape = list(np.shape(x)) + list(np.shape(self.c[0][0]))
+        out_shape = list(np.shape(x)) + list(np.shape(self.cpts[0]))
         out_array = np.zeros(out_shape, dtype=flint)
-        with np.nditer(x, flags=['multi_index']) as it:
+        with np.nditer(np.array(x), flags=['multi_index']) as it:
             for xx in it:
-                c = self.c[0]
-                w = self.w[0]
-                # wc = c*w[...,np.newaxis]
+                c = self.cpts_array[0]
+                w = self.w_array[0]
                 c_list = [self._deboor_1d(c, xx)]
                 w_list = [self._deboor_1d(w, xx)]
                 s_list = [c_list[0]/(w_list[0] if w_list[0] != 0 else 1)]
-                print(f'c={c_list[0]}, w={w_list[0]}, s={s_list[0]}')
                 for i in range(1,n+1):
-                    if self.c[i] is None:
-                        self._calc_d_cpts(i)
-                    if self.w[i] is None:
-                        self._calc_d_weights(i)
-                    c = self.c[i]
-                    w = self.w[i]
+                    if self.cpts_array[i] is None:
+                        self._calc_d_cpts(self.cpts_array, i)
+                        self._calc_d_cpts(self.w_array, i)
+                    c = self.cpts_array[i]
+                    w = self.w_array[i]
                     # wc = c*w[...,np.newaxis]
                     c_list.append(self._deboor_1d(c, xx, i))
                     w_list.append(self._deboor_1d(w, xx, i))
