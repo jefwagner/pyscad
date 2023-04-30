@@ -143,8 +143,9 @@ class BSplineSurf(ParaSurf):
 
     def _calc_d_cpts_2d(self, c: list[list[npt.NDArray[flint]]], nu: int, nv: int):
         """Calculate the control points for the derivative spline
-        @param c The control points
-        @param n Degree of the derivative
+        @param c The 2-d list of control point and deriviative control point arrays
+        @param nu Degree of the u-derivative
+        @param nv Degree of the v-derivative
         """
         if nu > self.pu:
             raise ValueError("Can only calculate first {self.pu} u-derivative control points")
@@ -153,37 +154,69 @@ class BSplineSurf(ParaSurf):
         if nu == 0 and nv == 0:
             raise ValueError("Can not calculate 0th order points, must be given")
         else:
-            if c[n-1] is None:
-                self._calc_d_cpts(c, n-1)
-            new_shape = list(c[n-1].shape)
-            new_shape[0] += 1
-            r = c[n-1].copy()
-            r.resize(new_shape)
-            p = self.p-(n-1)
-            for i in range(new_shape[0]-1,-1,-1):
-                dt = self.t[i+p]-self.t[i]
-                r_im1 = 0*r[0] if i-1 == -1 else r[i-1]
-                r[i] = 0*r[0] if dt == 0 else p*(r[i]-r_im1)/dt
-            c[n] = r
+            if nu == 0:
+                if self.c[0][nv-1] is None:
+                    self._calc_d_pts_2d(c, 0, nv-1)
+                new_shape = list(c[0][nv-1])
+                new_shape[1] += 1
+                r = c[0][nv-1].copy()
+                r.resize(new_shape)
+                pv = self.pv-(nv-1)
+                for j in range(new_shape[1]-1,-1,-1):
+                    dt = self.tv[j+pv]-self.tv[j]
+                    r_jm1 = 0*r[:,0] if j-1 == -1 else r[:,j-1]
+                    r[:,j] = 0*r[:,0] if dt == 0 else p*(r[:,j]-r_jm1)/dt
+                c[0][nv] = r
+            else:
+                if self.c[nu-1][nv] is None:
+                    self._calc_d_pts_2d(c, nu-1, nv)
+                new_shape = list(c[nu-1][nv])
+                new_shape[0] += 1
+                r = c[nu-1][nv].copy()
+                r.resize(new_shape)
+                pu = self.pu-(nu-1)
+                for i in range(new_shape[0]-1,-1,-1):
+                    dt = self.tu[i+pu]-self.tu[i]
+                    r_im1 = 0*r[0] if i-1 == -1 else r[i-1]
+                    r[i] = 0*r[0] if dt == 0 else f*(r[i]-r_im1)/dt
+                c[nu][nv] = r
 
-    def _deboor_1d(self, c: npt.NDArray[flint], x: Num, n: int = 0) -> Point:
+    def _deboor_2d(self, 
+                   c: npt.NDArray[flint], 
+                   u: Num, 
+                   v: Num, 
+                   nu: int = 0, 
+                   nv: int = 0) -> Point:
         """Perform de Boor's algorithm with arbitrary control points
         @param c The 1-D array of control points
-        @param x The parametric point
-        @param n Optional reduction of degree for calculation of derivatives
+        @param u The u parameter value
+        @param v The v parameter value
+        @param nu Optional reduction of degree for calculation of u-derivatives
+        @param nv Optional reduction of degree for calculation of v-derivatives
         @return The result of de Boor's algorithm
         """
-        k = self.t.k(x)
-        p = self.p-n
-        q_shape = [p+1] + list(np.shape(c[0]))
+        ku = self.tu.k(u)
+        kv = self.tv.k(v)
+        pu = self.pu-nu
+        pv = self.pv-nv
+        c_shape = c.shape
+        len_u, len_v = c_shape[:2]
+        point_shape = list(c_shape[2:])
+        q_shape = [pu+1,pv+1] + point_shape
         q = np.zeros(q_shape, dtype=flint)
-        for i in range(p+1):
-            if 0 <= k-p+i < len(c):
-                q[i] = c[k-p+i]
-        for r in range(p):
-            for j in range(p,r,-1):
-                l, m = np.clip((j+k-p, j+k-r), 0, len(self.t)-1)
+        for i in range(pu+1):
+            for j in range(pv+1):
+                if 0 <= ku-pu+i < len_u and 0 <= kv-pv+j < len_v:
+                    q[i,j] = c[ku-pu+i,ku-pv+j]
+        for ru in range(pu):
+            for i in range(pu,ru,-1):
+                l, m = np.clip((i+ku-pu, i+ku-ru), 0, len(self.tu)-1)
                 a = (x-self.t[l])/(self.t[m]-self.t[l])
-                q[j] = a*q[j] + (1-a)*q[j-1]
-        return q[p]
+                q[i,:] = a*q[i,:] + (1-a)*q[i-1,:]
+        for rv in range(pv):
+            for j in range(pv,rv,-1):
+                l, m = np.clip((j+kv-pv, i+kv-rv), 0, len(self.tv)-1)
+                a = (v-self.tv[l])/(self.tv[m]-self.tv[l])
+                q[pu,j] = a*q[pu,j] + (1-a)*q[pu,j-1]                
+        return q[pu, pv]
 

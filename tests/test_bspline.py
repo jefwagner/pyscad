@@ -54,6 +54,66 @@ def simple_basis_d2(t:float) -> float:
     else:
         return 1.0
 
+def cubic_basis(t:float) -> float:
+    """Basis function of degree 3 for knot-vector (0,1,2,3,4)"""
+    if t < 0.0:
+        return 0.0
+    elif t < 1.0:
+        return t*t*t/6.0
+    elif t < 2.0:
+        return (-3.0*t*t*t + 12.0*t*t - 12.0*t + 4.0)/6.0
+    elif t < 3.0:
+        return (3.0*t*t*t - 24.0*t*t + 60.0*t - 44.0)/6.0
+    elif x < 4.0:
+        return (4.0-t)*(4.0-t)*(4.0-t)/6.0
+    else:
+        return 0.0
+
+def cubic_basis_d1(t:float) -> float:
+    """First derivative for degree 3 spline for knot-vector (0,1,2,3,4)"""
+    if t < 0.0:
+        return 0.0
+    elif t < 1.0:
+        return t*t/2.0
+    elif t < 2.0:
+        return (-9.0*t*t + 24.0*t - 12.0)/6.0
+    elif t < 3.0:
+        return (9.0*t*t - 48.0*t + 60.0)/6.0
+    elif x < 4.0:
+        return -(4.0-t)*(4.0-t)/2.0
+    else:
+        return 0.0
+
+def cubic_basis_d2(t:float) -> float:
+    """Second derivative for degree 3 spline for knot-vector (0,1,2,3,4)"""
+    if t < 0.0:
+        return 0.0
+    elif t < 1.0:
+        return t
+    elif t < 2.0:
+        return (-18.0*t + 24.0)/6.0
+    elif t < 3.0:
+        return (18.0*t - 48.0)/6.0
+    elif x < 4.0:
+        return (4.0-t)
+    else:
+        return 0.0
+
+def cubic_basis_d3(t:float) -> float:
+    """Third derivative for degree 3 spline for knot-vector (0,1,2,3,4)"""
+    if t < 0.0:
+        return 0.0
+    elif t < 1.0:
+        return 1.0
+    elif t < 2.0:
+        return -3.0
+    elif t < 3.0:
+        return 3.0
+    elif x < 4.0:
+        return -1.0
+    else:
+        return 0.0
+
 
 class TestBSplineCurveInternal:
     """Validate basis spline internal methods"""
