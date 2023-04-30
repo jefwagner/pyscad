@@ -19,5 +19,5 @@ Spline related classes
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
 from .kvec import KnotVector
-from .bspline import BSplineCurve#, BSplineSurf
-# from .nurbs import NurbsCurve, NurbsSurf
+from .bspline import BSplineCurve, BSplineSurf
+from .nurbs import NurbsCurve#, NurbsSurf

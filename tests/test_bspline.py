@@ -24,8 +24,9 @@ import numpy as np
 from flint import flint
 
 from pyscad.geo.curve import ParaCurve
+from pyscad.geo.surf import ParaSurf
 from pyscad.geo.spline.kvec import KnotVector
-from pyscad.geo.spline.bspline import BSplineCurve
+from pyscad.geo.spline.bspline import BSplineCurve, BSplineSurf
 
 def simple_basis(t:float) -> float:
     """Simple basis function of degree 2 for knot-vector (0,1,2,3)"""
@@ -245,3 +246,39 @@ class TestBSplineCurveDerivative:
             for x in it:
                 sbd = simple_basis_d2(x)
                 assert np.alltrue( res[it.multi_index] == sbd*np.array([1,-1,0.1]) )
+
+
+class TestBSplineSurfInternal:
+
+    def test_init(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        assert isinstance(bs, ParaSurf)
+        assert isinstance(bs, BSplineSurf)
+        assert isinstance(bs.cpts, np.ndarray)
+        assert bs.cpts.dtype == flint
+        assert bs.pu == 2
+        assert bs.pv == 3
+        assert isinstance(bs.tu, KnotVector)
+        assert isinstance(bs.tv, KnotVector)
+        assert isinstance(bs.cpts_array, list)
+        assert len(bs.cpts_array) == bs.pu+1
+        for row in bs.cpts_array:
+            assert isinstance(row, list)
+            assert len(row) == bs.pv+1
+
+
+    def test_exception(self):
+        with pytest.raises(ValueError):
+            BSplineSurf([[1,2]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        with pytest.raises(ValueError):
+            BSplineSurf([[1],[2]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+
+    def test_calc_d_cpts_2d(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        assert bs.cpts_array[1][0] is None
+        bs._calc_d_cpts_2d( bs.cpts_array, 1, 0)
+        assert np.alltrue( bs.cpts_array[1][0] == np.array([[1],[-1]], dtype=flint) )
+        assert bs.cpts_array[0][1] is None
+        bs._calc_d_cpts_2d( bs.cpts_array, 0, 1)
+        assert np.alltrue( bs.cpts_array[0][1] == np.array([[1,-1]]) )
+

@@ -26,6 +26,7 @@ from flint import flint
 
 from ...types import *
 from ..curve import ParaCurve
+from ..surf import ParaSurf
 from .kvec import KnotVector
 
 class BSplineCurve(ParaCurve):
@@ -58,6 +59,10 @@ class BSplineCurve(ParaCurve):
                 self._calc_d_cpts(c, n-1)
             new_shape = list(c[n-1].shape)
             new_shape[0] += 1
+            r = np.zeros(new_shape, dtype=flint)
+            with np.nditer(c[n-1], flags=['multi_index']) as it:
+                for val in it:
+                    r[it.multi_index] = val
             r = c[n-1].copy()
             r.resize(new_shape)
             p = self.p-(n-1)
@@ -155,30 +160,54 @@ class BSplineSurf(ParaSurf):
             raise ValueError("Can not calculate 0th order points, must be given")
         else:
             if nu == 0:
-                if self.c[0][nv-1] is None:
+                if c[0][nv-1] is None:
                     self._calc_d_pts_2d(c, 0, nv-1)
-                new_shape = list(c[0][nv-1])
+                new_shape = list(c[0][nv-1].shape)
                 new_shape[1] += 1
-                r = c[0][nv-1].copy()
-                r.resize(new_shape)
+                r = np.zeros(new_shape, dtype=flint)
+                with np.nditer(c[0][nv-1], flags=['multi_index']) as it:
+                    for val in it:
+                        r[it.multi_index] = val
+                # r = c[0][nv-1].copy()
+                # r.resize(new_shape)
                 pv = self.pv-(nv-1)
                 for j in range(new_shape[1]-1,-1,-1):
                     dt = self.tv[j+pv]-self.tv[j]
                     r_jm1 = 0*r[:,0] if j-1 == -1 else r[:,j-1]
-                    r[:,j] = 0*r[:,0] if dt == 0 else p*(r[:,j]-r_jm1)/dt
+                    r[:,j] = 0*r[:,0] if dt == 0 else pv*(r[:,j]-r_jm1)/dt
                 c[0][nv] = r
             else:
-                if self.c[nu-1][nv] is None:
+                if c[nu-1][nv] is None:
                     self._calc_d_pts_2d(c, nu-1, nv)
-                new_shape = list(c[nu-1][nv])
+                new_shape = list(c[nu-1][nv].shape)
                 new_shape[0] += 1
-                r = c[nu-1][nv].copy()
-                r.resize(new_shape)
+                r = np.zeros(new_shape, dtype=flint)
+                with np.nditer(c[nu-1][nv], flags=['multi_index']) as it:
+                    for val in it:
+                        r[it.multi_index] += val
+                # r = c[nu-1][nv].copy()
+                # r.resize(new_shape)
+                with np.nditer(r, flags=['multi_index']) as it:
+                    for val in it:
+                        x = val.item()
+                        print(f'r[{it.multi_index}] = {x.a},{x.b},{x.v}')
                 pu = self.pu-(nu-1)
                 for i in range(new_shape[0]-1,-1,-1):
                     dt = self.tu[i+pu]-self.tu[i]
                     r_im1 = 0*r[0] if i-1 == -1 else r[i-1]
-                    r[i] = 0*r[0] if dt == 0 else f*(r[i]-r_im1)/dt
+                    x = pu*(r[i]-r_im1)/dt
+                    print(f'x = {x[0].a, x[0].b, x[0].v}')
+                    if dt == 0:
+                        r[i] = flint(0)*r[0]
+                    else:
+                        r[i] = pu*(r[i]-r_im1)/dt
+                    # r[i] = 0*r[0] if dt == 0 else pu*(r[i]-r_im1)/dt
+                    x = r[i]
+                    print(f'r[{i}] = {x[0].a, x[0].b, x[0].v}')
+                    with np.nditer(r, flags=['multi_index']) as it:
+                        for val in it:
+                            x = val.item()
+                            print(f'r[{it.multi_index}] = {x.a},{x.b},{x.v}')
                 c[nu][nv] = r
 
     def _deboor_2d(self, 
