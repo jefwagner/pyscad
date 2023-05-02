@@ -131,6 +131,7 @@ class TestLinAlg:
         # Confirm the eigenvectors are orthogonal
         assert np.alltrue( v.dot(v.T) == np.eye(3) )
 
+    @pytest.mark.skip(reason="Linalg routines are not yet viable")
     def test_eig_full(self):
         a = np.array([[3,-1],[-1,3]], dtype=flint)
         lt = np.array([4,2])

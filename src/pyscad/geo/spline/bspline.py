@@ -175,15 +175,10 @@ class BSplineSurf(ParaSurf):
                 new_shape[0] += 1
                 r = np.zeros(new_shape, dtype=flint)
                 r[:-1] = c[nu-1][nv]
-                with np.nditer(r, flags=['multi_index']) as it:
-                    for val in it:
-                        x = val.item()
-                        print(f'r[{it.multi_index}] = {x.a},{x.b},{x.v}')
                 pu = self.pu-(nu-1)
                 for i in range(new_shape[0]-1,-1,-1):
                     dt = self.tu[i+pu]-self.tu[i]
                     r_im1 = 0*r[0] if i-1 == -1 else r[i-1]
-                    x = pu*(r[i]-r_im1)/dt
                     r[i] = 0*r[0] if dt == 0 else pu*(r[i]-r_im1)/dt
                 c[nu][nv] = r
 
@@ -213,16 +208,44 @@ class BSplineSurf(ParaSurf):
         for i in range(pu+1):
             for j in range(pv+1):
                 if 0 <= ku-pu+i < len_u and 0 <= kv-pv+j < len_v:
-                    q[i,j] = c[ku-pu+i,ku-pv+j]
+                    q[i,j] = c[ku-pu+i,kv-pv+j]
+        print(f'q={q}')
         for ru in range(pu):
             for i in range(pu,ru,-1):
                 l, m = np.clip((i+ku-pu, i+ku-ru), 0, len(self.tu)-1)
-                a = (x-self.t[l])/(self.t[m]-self.t[l])
+                a = (u-self.tu[l])/(self.tu[m]-self.tu[l])
                 q[i,:] = a*q[i,:] + (1-a)*q[i-1,:]
+                print(f'q={q}')
         for rv in range(pv):
             for j in range(pv,rv,-1):
-                l, m = np.clip((j+kv-pv, i+kv-rv), 0, len(self.tv)-1)
+                l, m = np.clip((j+kv-pv, j+kv-rv), 0, len(self.tv)-1)
                 a = (v-self.tv[l])/(self.tv[m]-self.tv[l])
                 q[pu,j] = a*q[pu,j] + (1-a)*q[pu,j-1]                
+                print(f'q={q}')
         return q[pu, pv]
 
+    def __call__(self, u: Num, v: Num) -> Point:
+        """Evaluate the spline curve at a parametric point
+        @return The value of the spline at the parametric point x
+        """
+        return self.d(u, v, 0, 0)
+            
+    def d(self, u: Num, v: Num, nu: int, nv: int) -> Point:
+        """Evaluate the n^th order derivative of the spline curve
+        @param x The parametric point
+        @param n The order of the derivative
+        @return The value of the derivative curve at the parametric point x
+        """
+        if np.shape(u) != np.shape(v):
+            raise ValueError("u and v arguments must be same shape")
+        out_shape = list(np.shape(u)) + list(np.shape(self.cpts[0]))
+        if nu > self.pu or nv > self.pv:
+            return np.zeros(out_shape, dtype=flint)
+        if self.cpts_array[nu][nv] is None:
+            self._calc_d_cpts_2d(self.cpts_array, nu, nv)
+        c = self.cpts_array[nu][nv]
+        out_array = np.zeros(out_shape, dtype=flint)
+        with np.nditer([np.array(u),np.array(v)], flags=['multi_index']) as it:
+            for uu,vv in it:
+                out_array[it.multi_index] = self._deboor_2d(c, uu, vv, nu, nv)
+        return out_array

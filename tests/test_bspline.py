@@ -65,7 +65,7 @@ def cubic_basis(t:float) -> float:
         return (-3.0*t*t*t + 12.0*t*t - 12.0*t + 4.0)/6.0
     elif t < 3.0:
         return (3.0*t*t*t - 24.0*t*t + 60.0*t - 44.0)/6.0
-    elif x < 4.0:
+    elif t < 4.0:
         return (4.0-t)*(4.0-t)*(4.0-t)/6.0
     else:
         return 0.0
@@ -80,7 +80,7 @@ def cubic_basis_d1(t:float) -> float:
         return (-9.0*t*t + 24.0*t - 12.0)/6.0
     elif t < 3.0:
         return (9.0*t*t - 48.0*t + 60.0)/6.0
-    elif x < 4.0:
+    elif t < 4.0:
         return -(4.0-t)*(4.0-t)/2.0
     else:
         return 0.0
@@ -95,7 +95,7 @@ def cubic_basis_d2(t:float) -> float:
         return (-18.0*t + 24.0)/6.0
     elif t < 3.0:
         return (18.0*t - 48.0)/6.0
-    elif x < 4.0:
+    elif t < 4.0:
         return (4.0-t)
     else:
         return 0.0
@@ -110,7 +110,7 @@ def cubic_basis_d3(t:float) -> float:
         return -3.0
     elif t < 3.0:
         return 3.0
-    elif x < 4.0:
+    elif t < 4.0:
         return -1.0
     else:
         return 0.0
@@ -306,3 +306,76 @@ class TestBSplineSurfInternal:
         assert np.alltrue( bs.cpts_array[1][0] == target)
         target = np.array([[1],[-2],[1]])
         assert np.alltrue( bs.cpts_array[2][0] == target)
+
+    def test_calc_d_cpts_2d_exceptions(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        with pytest.raises(ValueError):
+            bs._calc_d_cpts_2d( bs.cpts_array, 3, 0)
+        with pytest.raises(ValueError):
+            bs._calc_d_cpts_2d( bs.cpts_array, 0, 4)
+        with pytest.raises(ValueError):
+            bs._calc_d_cpts_2d( bs.cpts_array, 0, 0)
+
+    def test_deboor_2d(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        for u in np.linspace(0,3,10):
+            su = simple_basis(u)
+            for v in np.linspace(0,4,10):
+                sv = cubic_basis(v)
+                calc = bs._deboor_2d( bs.cpts_array[0][0], u, v)
+                assert calc == su*sv
+
+    def test_deboor_2d_d1(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        for u in np.linspace(0,3,10):
+            su = simple_basis_d1(u)
+            for v in np.linspace(0,4,10):
+                sv = cubic_basis_d1(v)
+                bs._calc_d_cpts_2d( bs.cpts_array, 1, 1)
+                calc = bs._deboor_2d( bs.cpts_array[1][1], u, v, 1, 1)
+                assert calc == su*sv
+
+
+class TestBSplineSurfEval:
+
+    def test_call_scalar(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        for u in np.linspace(0,3,10):
+            su = simple_basis(u)
+            for v in np.linspace(0,4,10):
+                sv = cubic_basis(v)
+                calc = bs(u,v)
+                assert calc == su*sv
+
+    def test_call_array(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        u = np.linspace(0,3,5)
+        v = np.linspace(0,4,6)
+        U,V = np.meshgrid(u,v)
+        res = bs(U, V)
+        with np.nditer([U,V], flags=['multi_index']) as it:
+            for uu, vv in it:
+                su = simple_basis(uu)
+                sv = cubic_basis(vv)
+                assert res[it.multi_index] == su*sv
+
+    def test_derivative_scalar(self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        for u in np.linspace(0,3,10):
+            su = simple_basis_d2(u)
+            for v in np.linspace(0,4,10):
+                sv = cubic_basis_d1(v)
+                calc = bs.d(u,v,2,1)
+                assert calc == su*sv
+
+    def test_derivative_array (self):
+        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
+        u = np.linspace(0,3,5)
+        v = np.linspace(0,4,6)
+        U,V = np.meshgrid(u,v)
+        res = bs.d(U, V, 2, 1)
+        with np.nditer([U,V], flags=['multi_index']) as it:
+            for uu, vv in it:
+                su = simple_basis_d2(uu)
+                sv = cubic_basis_d1(vv)
+                assert res[it.multi_index] == su*sv
