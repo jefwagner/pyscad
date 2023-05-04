@@ -38,7 +38,7 @@ class ParaSurf:
         du = self.d(u,v,1,0)
         dv = self.d(u,v,0,1)
         n = np.cross(du, dv)
-        return mag(n)
+        return n/mag(n)[...,np.newaxis]
 
     def fff(self, u: Num, v: Num) -> tuple[Num, Num, Num]:
         """Calculate the components of the first fundamental form
@@ -76,7 +76,7 @@ class ParaSurf:
         """
         E, F, G = self.fff(u,v)
         L, M, N = self.sff(u,v)
-        return (E*N-2*F*M+G*L)/(2*(E*G*F*F))
+        return (E*N-2*F*M+G*L)/(2*(E*G-F*F))
     
     def k_gauss(self, u: Num, v: Num) -> Num:
         """Calculate the Gaussian curvature of the surface
@@ -94,10 +94,12 @@ class ParaSurf:
         @param v The v parameter
         @return The k+ and k- principal curvature
         """
+        E, F, G = self.fff(u,v)
         L, M, N = self.sff(u,v)
-        b = L+N
-        c = L*N - M*M
-        d = np.sqrt(b*b/4-c)
-        kp = b/2 + d
-        km = b/2 - d
+        a = (E*G - F*F)
+        b = (L*G - 2*M*F + N*E)/(2*a)
+        c =(L*N - M*M)/a
+        d = np.sqrt(b*b - c)
+        kp = b + d
+        km = b - d
         return kp, km
