@@ -93,8 +93,8 @@ class NurbsSurf(BSplineSurf):
                  w: Sequence[Sequence[Num]],
                  pu: int,
                  pv: int,
-                 tu: KnotVector,
-                 tv: KnotVector):
+                 tu: Sequence[Num],
+                 tv: Sequence[Num]):
         """Create a new nurbs surface object
         @param c The 2-D array of control points
         @param pu The degree of the b-spline u function
@@ -102,16 +102,14 @@ class NurbsSurf(BSplineSurf):
         @param tu The u direction knot-vector
         @param tv The v direction knot-vector
         """
-        if len(w) != len(c):
-            raise ValueError("Control points and weights be same length")
         super().__init__(c, pu, pv, tu, tv)
         self.weights = np.array(w, dtype = flint)
         if self.cpts.shape[:2] != self.weights.shape[:]:
             raise ValueError("Control point and weight arrays must have the same shape")
         cw = self.cpts*self.weights[...,np.newaxis]
         self.cpts_array[0][0] = cw
-        self.w_array = [[None for _ in range(pu+1)] for _ in range(pv+1)]
-        self.w_array[0] = self.weights
+        self.w_array = [[None for _ in range(pv+1)] for _ in range(pu+1)]
+        self.w_array[0][0] = self.weights
 
     def d(self, u: Num, v: Num, nu: int, nv: int) -> Point:
         """Evaluate the (nu, nv) partial derivative of the surface
