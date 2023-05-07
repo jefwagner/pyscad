@@ -43,8 +43,7 @@ class ParaCurve:
         @return The curvature of the curve
         """
         t = np.array(t, dtype=flint)
-        d1 = self.d(t)
-        d2 = self.d(t,2)
+        d1, d2 = self.d(t,[1,2])
         cr = np.cross(d1,d2)
         denom = mag(d1)*mag(d1)*mag(d1)
         if t.shape == cr.shape:

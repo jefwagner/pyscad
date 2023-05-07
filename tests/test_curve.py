@@ -35,27 +35,25 @@ class Parabola(ParaCurve):
 
     def __call__(self, x):
         """Evalute the parabola"""
-        x = np.array(x, dtype=flint)
-        shape = list(x.shape) + [2]
-        out_array = np.empty(shape, dtype=flint)
-        with np.nditer(x, flags=['multi_index']) as it:
-            for xx in it:
-                out_array[it.multi_index] = np.array([xx, xx*xx])
-        return out_array
+        return self.d(x, 0)
 
     def d(self, x, n = 1):
         """Evaluate the nth order derivatives of the parabola"""
-        if n == 0:
-            return self.__call__(x)
-        x = np.array(x, dtype=flint)
-        shape = list(x.shape) + [2]
-        out_array = np.zeros(shape, dtype=flint)
-        with np.nditer(x, flags=['multi_index']) as it:
-            for xx in it:
-                if n == 1:
-                    out_array[it.multi_index] = np.array([1, 2*xx])
-                elif n == 2:
-                    out_array[it.multi_index] = np.array([0, 2])
+        v_shape = list(np.shape(x)) + [2]
+        out_shape = list(np.shape(n)) + v_shape
+        out_array = np.zeros(out_shape, dtype=flint)
+        with np.nditer(np.array(n), flags=['multi_index']) as der_iter:
+            for nn in der_iter:
+                v_array = np.zeros(v_shape, dtype=flint)
+                with np.nditer(np.array(x), flags=['multi_index']) as it:
+                    for xx in it:
+                        if nn == 0:
+                            v_array[it.multi_index] = np.array([xx, xx*xx])
+                        elif nn == 1:
+                            v_array[it.multi_index] = np.array([1, 2*xx])
+                        elif nn == 2:
+                            v_array[it.multi_index] = np.array([0, 2])
+                out_array[der_iter.multi_index] = v_array
         return out_array
 
 
@@ -114,8 +112,5 @@ class TestParaCurve:
     def test_curvature_array(self):
         p = Parabola()
         kn, k0, kp = p.kap([-1,0,1])
-        print(f'curv(-1) = {kn}')
-        print(f'curv( 0) = {k0}')
-        print(f'curv(+1) = {kp}')
         assert k0 == 2
         assert kn == kp

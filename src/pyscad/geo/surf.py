@@ -35,38 +35,26 @@ class ParaSurf:
         @param v The v parameter
         @return The normal vector of the surface at (u,v)
         """
-        du = self.d(u,v,1,0)
-        dv = self.d(u,v,0,1)
+        du, dv = self.d(u,v,[1,0],[0,1])
         n = np.cross(du, dv)
         return n/mag(n)[...,np.newaxis]
 
-    def fff(self, u: Num, v: Num) -> tuple[Num, Num, Num]:
-        """Calculate the components of the first fundamental form
+    def ff(self, u: Num, v: Num) -> tuple[Num, Num, Num, Num, Num, Num]:
+        """Calculate the components of the first and second fundamental form
         @param u The u parameter
         @param v The v parameter
-        @return The E, F, and G components of the first fundamental form
+        @return The E, F, G, L, M, and N components of the second fundamental form
         """
-        du = self.d(u,v,1,0)
-        dv = self.d(u,v,0,1)
+        du, dv, duu, duv, dvv = self.d(u,v,[1,0,2,1,0],[0,1,0,1,2])
+        n = np.cross(du, dv)
+        n /= mag(n)[...,np.newaxis]
         E = (du*du).sum(axis=-1)
         F = (du*dv).sum(axis=-1)
         G = (dv*dv).sum(axis=-1)
-        return E, F, G
-
-    def sff(self, u: Num, v: Num) -> tuple[Num, Num, Num]:
-        """Calculate the components of the second fundamental form
-        @param u The u parameter
-        @param v The v parameter
-        @return The L, M, and N components of the second fundamental form
-        """
-        n = self.norm(u,v)
-        duu = self.d(u,v,2,0)
-        duv = self.d(u,v,1,1)
-        dvv = self.d(u,v,0,2)
         L = (n*duu).sum(axis=-1)
         M = (n*duv).sum(axis=-1)
         N = (n*dvv).sum(axis=-1)
-        return L, M, N
+        return E, F, G, L, M, N
 
     def k_mean(self, u: Num, v: Num) -> Num:
         """Calculate the mean curvature of the surface
@@ -74,8 +62,7 @@ class ParaSurf:
         @param v The v parameter
         @return The mean curvature of the surface at (u,v)
         """
-        E, F, G = self.fff(u,v)
-        L, M, N = self.sff(u,v)
+        E, F, G, L, M, N = self.ff(u, v)
         return (E*N-2*F*M+G*L)/(2*(E*G-F*F))
     
     def k_gauss(self, u: Num, v: Num) -> Num:
@@ -84,8 +71,7 @@ class ParaSurf:
         @param v The v parameter
         @return The mean curvature of the surface at (u,v)
         """
-        E, F, G = self.fff(u,v)
-        L, M, N = self.sff(u,v)
+        E, F, G, L, M, N = self.ff(u, v)
         return (L*N-M*M)/(E*G-F*F)
 
     def k_princ(self, u: Num, v: Num) -> tuple[Num, Num]:
@@ -94,8 +80,7 @@ class ParaSurf:
         @param v The v parameter
         @return The k+ and k- principal curvature
         """
-        E, F, G = self.fff(u,v)
-        L, M, N = self.sff(u,v)
+        E, F, G, L, M, N = self.ff(u, v)
         a = (E*G - F*F)
         b = (L*G - 2*M*F + N*E)/(2*a)
         c =(L*N - M*M)/a
