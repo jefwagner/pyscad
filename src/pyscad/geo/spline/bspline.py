@@ -102,16 +102,27 @@ class BSplineCurve(ParaCurve):
         @param n The order of the derivative
         @return The value of the derivative curve at the parametric point x
         """
-        out_shape = list(np.shape(x)) + list(np.shape(self.cpts[0]))
-        if n > self.p:
-            return np.zeros(out_shape, dtype=flint)
-        if self.cpts_array[n] is None:
-            self._calc_d_cpts(self.cpts_array, n)
-        c = self.cpts_array[n]
+        # Shape of the points
+        c_shape = list(np.shape(self.cpts[0]))
+        # Shape for a single array of evaluations
+        v_shape = list(np.shape(x)) + c_shape
+        # Shape of the output
+        out_shape = list(np.shape(n)) + v_shape
         out_array = np.zeros(out_shape, dtype=flint)
-        with np.nditer(np.array(x), flags=['multi_index']) as it:
-            for xx in it:
-                out_array[it.multi_index] = self._deboor_1d(c, xx, n)
+        # Loop over all required derivatives
+        with np.nditer(n, flags=['multi_index']) as der_iter:
+            for nn in der_iter:
+                if nn > self.p:
+                    out_array[der_iter.multi_index] = np.zeros(v_shape, dtype=flint)
+                else:
+                    if self.cpts_array[nn] is None:
+                        self._calc_d_cpts(self.cpts_array, nn)
+                    c = self.cpts_array[nn]
+                    v_array = np. zeros(v_shape, dtype=flint)
+                    with np.nditer(np.array(x), flags=['multi_index']) as it:
+                        for xx in it:
+                            v_array[it.multi_index] = self._deboor_1d(c, xx, nn)
+                    out_array[der_iter.multi_index] = v_array
         return out_array
 
 
@@ -209,19 +220,16 @@ class BSplineSurf(ParaSurf):
             for j in range(pv+1):
                 if 0 <= ku-pu+i < len_u and 0 <= kv-pv+j < len_v:
                     q[i,j] = c[ku-pu+i,kv-pv+j]
-        print(f'q={q}')
         for ru in range(pu):
             for i in range(pu,ru,-1):
                 l, m = np.clip((i+ku-pu, i+ku-ru), 0, len(self.tu)-1)
                 a = (u-self.tu[l])/(self.tu[m]-self.tu[l])
                 q[i,:] = a*q[i,:] + (1-a)*q[i-1,:]
-                print(f'q={q}')
         for rv in range(pv):
             for j in range(pv,rv,-1):
                 l, m = np.clip((j+kv-pv, j+kv-rv), 0, len(self.tv)-1)
                 a = (v-self.tv[l])/(self.tv[m]-self.tv[l])
                 q[pu,j] = a*q[pu,j] + (1-a)*q[pu,j-1]                
-                print(f'q={q}')
         return q[pu, pv]
 
     def __call__(self, u: Num, v: Num) -> Point:
@@ -238,14 +246,23 @@ class BSplineSurf(ParaSurf):
         """
         if np.shape(u) != np.shape(v):
             raise ValueError("u and v arguments must be same shape")
-        out_shape = list(np.shape(u)) + list(np.shape(self.cpts[0]))
-        if nu > self.pu or nv > self.pv:
-            return np.zeros(out_shape, dtype=flint)
-        if self.cpts_array[nu][nv] is None:
-            self._calc_d_cpts_2d(self.cpts_array, nu, nv)
-        c = self.cpts_array[nu][nv]
+        if np.shape(nu) != np.shape(nv):
+            raise ValueError("nu and nv derivative orders must be same shape")
+        c_shape = list(np.shape(self.cpts[0,0]))
+        v_shape = list(np.shape(u)) + c_shape
+        out_shape = list(np.shape(nu)) + v_shape
         out_array = np.zeros(out_shape, dtype=flint)
-        with np.nditer([np.array(u),np.array(v)], flags=['multi_index']) as it:
-            for uu,vv in it:
-                out_array[it.multi_index] = self._deboor_2d(c, uu, vv, nu, nv)
+        with np.nditer([np.array(nu), np.array(nv)], flags=['multi_index']) as der_iter:
+            for du, dv in der_iter:
+                if du > self.pu or dv > self.pv:
+                    out_array[der_iter.multi_index] = np.zeros(v_shape, dtype=flint)
+                else:
+                    if self.cpts_array[du][dv] is None:
+                        self._calc_d_cpts_2d(self.cpts_array, du, dv)
+                    c = self.cpts_array[du][dv]
+                    v_array = np.zeros(v_shape, dtype=flint)
+                    with np.nditer([np.array(u), np.array(v)], flags=['multi_index']) as it:
+                        for uu, vv in it:
+                            v_array[it.multi_index] = self._deboor_2d(c, uu, vv, du, dv)
+                    out_array[der_iter.multi_index] = v_array
         return out_array
