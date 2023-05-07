@@ -87,6 +87,22 @@ class TestNurbsCurve:
         assert d2[1] == 0
 
 
+@pytest.fixture
+def torus():
+    cpts = [
+        [[4,0,0],[4,0,1],[3,0,1]],
+        [[4,4,0],[4,4,1],[3,3,1]],
+        [[0,4,0],[0,4,1],[0,3,1]],
+    ]
+    _root2 = np.sqrt(flint(2))
+    weights = [
+        [1, 1/_root2, 1],
+        [1/_root2, 0.5, 1/_root2],
+        [1, 1/_root2, 1]
+    ]
+    kv = [0,0,0,1,1,1]
+    return NurbsSurf(cpts, weights, 2, 2, kv, kv)
+
 class TestNurbsSurf:
 
     def test_init(self):
@@ -106,3 +122,23 @@ class TestNurbsSurf:
         with pytest.raises(ValueError):
             ns = NurbsSurf([[[1,-1,-.1]]], [[1,2]], 2, 3, [0,1,2,3],[0,1,2,3,4])
 
+    def test_call_scalar(self, torus):
+        nt = torus
+        test_vals = [
+            ((0,0), (4,0,0)),
+            ((0,1), (3,0,1)),
+            ((1,0), (0,4,0)),
+            ((1,1), (0,3,1)),
+        ]
+        for uv, res in test_vals:
+            assert np.alltrue( nt(*uv) == np.array(res) )
+
+    def test_call_array(self, torus):
+        nt = torus
+        U, V = np.meshgrid([0,1],[0,1])
+        target = np.array([
+            [[4,0,0],[0,4,0]],
+            [[3,0,1],[0,3,1]]
+        ])
+        res = nt(U,V)
+        assert np.alltrue( nt(U, V) == target )

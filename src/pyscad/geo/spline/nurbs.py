@@ -120,11 +120,13 @@ class NurbsSurf(BSplineSurf):
         @return The value of the partial derivative at the point (u,v)
         """
         # Holder for output data
-        out_shape = list(np.shape(x)) + list(np.shape(self.cpts[0]))
+        if np.shape(u) != np.shape(v):
+            raise ValueError("u and v arguments must be same shape")
+        out_shape = list(np.shape(u)) + list(np.shape(self.cpts[0,0]))
         out_array = np.zeros(out_shape, dtype=flint)
         # Working space
         w_arr_shape = (nu+1, nv+1)
-        c_arr_shape = [nu+1, nv+1] + self.cpts[0,0].shape
+        c_arr_shape = [nu+1, nv+1] + list(self.cpts[0,0].shape)
         c_arr = np.zeros(c_arr_shape, dtype=flint)
         w_arr = np.zeros(w_arr_shape, dtype=flint)
         s_arr = np.zeros(c_arr_shape, dtype=flint)
@@ -164,5 +166,5 @@ class NurbsSurf(BSplineSurf):
                                 term *= s_arr[i-ii,j-jj]*w_arr[ii,jj]
                                 s_arr[i,j] -= term
                         s_arr[i,j] /= w_arr[0,0]
-                out_array[it.multi_index] = s[nu,nv]
+                out_array[it.multi_index] = s_arr[nu,nv]
         return out_array
