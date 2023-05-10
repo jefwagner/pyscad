@@ -140,5 +140,30 @@ class TestNurbsSurf:
             [[4,0,0],[0,4,0]],
             [[3,0,1],[0,3,1]]
         ])
-        res = nt(U,V)
         assert np.alltrue( nt(U, V) == target )
+
+    def test_norm_scalar(self, torus):
+        nt = torus
+        test_vals = [
+            ((0,0), (1,0,0)),
+            ((0,1), (0,0,1)),
+            ((1,0), (0,1,0)),
+            ((1,1), (0,0,1)),
+        ]
+        for uv, res in test_vals:
+            assert np.alltrue( nt.norm(*uv) == np.array(res) )
+
+    def test_norm_array(self, torus):
+        nt = torus
+        U, V = np.meshgrid([0,1],[0,1])
+        target = np.array([
+            [[1,0,0],[0,1,0]],
+            [[0,0,1],[0,0,1]]
+        ])
+        assert np.alltrue( nt.norm(U, V) == target )
+
+    def test_k_princ_scalar(self, torus):
+        nt = torus
+        kp, km = nt.k_princ(0,0)
+        assert kp == -0.25
+        assert km == -1.0

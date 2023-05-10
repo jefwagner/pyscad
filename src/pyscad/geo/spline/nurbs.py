@@ -134,8 +134,8 @@ class NurbsSurf(BSplineSurf):
         out_shape = list(np.shape(nu)) + v_shape
         out_array = np.zeros(out_shape, dtype=flint)
         # Working space
-        w_arr_shape = (nu+1, nv+1)
-        c_arr_shape = [nu+1, nv+1] + list(self.cpts[0,0].shape)
+        w_arr_shape = [np.max(nu)+1, np.max(nv)+1]
+        c_arr_shape = w_arr_shape + list(self.cpts[0,0].shape)
         c_arr = np.zeros(c_arr_shape, dtype=flint)
         w_arr = np.zeros(w_arr_shape, dtype=flint)
         s_arr = np.zeros(c_arr_shape, dtype=flint)
@@ -146,17 +146,33 @@ class NurbsSurf(BSplineSurf):
                 nvmax[i] = nvmax[i] if nvmax[i] >= dv else dv
         with np.nditer([np.array(u),np.array(v)], flags=['multi_index']) as it:
             for uu, vv in it:
-                for i in range(0, numax+1):
+                c = self.cpts_array[0][0]
+                w = self.w_array[0][0]
+                c_arr[0,0] = self._deboor_2d(c, uu, vv, 0, 0)
+                _w = self._deboor_2d(w, uu, vv, 0, 0)
+                w_arr[0,0] = _w if _w != 0 else flint(1.0)
+                s_arr[0,0] = c_arr[0,0]/w_arr[0,0]
+                for j in range(1, nvmax[0]+1):
+                    if self.cpts_array[0][j] is None:
+                        self._calc_d_cpts_2d(self.cpts_array, 0, j)
+                        self._calc_d_cpts_2d(self.w_array, 0, j)
+                    c = self.cpts_array[0][j]
+                    w = self.w_array[0][j]
+                    c_arr[0,j] = self._deboor_2d(c, uu, vv, 0, j)
+                    w_arr[0,j] = self._deboor_2d(w, uu, vv, 0, j)
+                    s_arr[0,j] = c_arr[0,j]
+                    for jj in range(1, j+1):
+                        s_arr[0,j] -= _binom[j,jj]*s_arr[0,j-jj]*w_arr[0,jj]
+                    s_arr[0,j] /= w_arr[0,0]
+                for i in range(1,numax+1):
                     for j in range(nvmax[i]+1):
                         if self.cpts_array[i][j] is None:
-                            self._calc_d_cpts_2d(self.cpts_array, uu, vv, i, j)
-                            self._calc_d_cpts_2d(self.w_array, uu, vv, i, j)
+                            self._calc_d_cpts_2d(self.cpts_array, i, j)
+                            self._calc_d_cpts_2d(self.w_array, i, j)
                         c = self.cpts_array[i][j]
                         w = self.w_array[i][j]
                         c_arr[i,j] = self._deboor_2d(c, uu, vv, i, j)
                         w_arr[i,j] = self._deboor_2d(w, uu, vv, i, j)
-                        if i == 0 and j == 0:
-                            w_arr[0,0] = w_arr[0,0] if w_arr[0,0] != 0 else flint(1.0)
                         s_arr[i,j] = c_arr[i,j]
                         for ii in range(1, i+1):
                             for jj in range(j+1):
