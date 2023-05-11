@@ -24,9 +24,18 @@ class ParaCurve:
     """A parametric space curve for t in R to R^3"""
 
     def __call__(self, t: Num) -> Point:
-        raise NotImplementedError("Virtual method, must redefine")
+        """Evaluate the curve
+        @param t The parametric value
+        @return The value of the curve
+        """
+        return self.d(tt, 0)
 
     def d(self, t: Num, n: int = 1) -> Point:
+        """Derivative
+        @param t The parametric value
+        @param n The order of the derivative
+        @return The n^th derivative of the curve
+        """
         raise NotImplementedError("Virtual method, must redefine")
 
     def t(self, t: Num) -> Point:
