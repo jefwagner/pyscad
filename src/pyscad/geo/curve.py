@@ -28,10 +28,37 @@ class ParaCurve:
         @param t The parametric value
         @return The value of the curve
         """
-        return self.d(tt, 0)
+        return self.d(t, 0)
 
     def d(self, t: Num, n: int = 1) -> Point:
-        """Derivative
+        """Evaluate the n^th order derivative of the curve
+        @param t The parametric value
+        @param n The order of the derivative
+        @return The n^th derivative of the curve
+        """
+        out_shape = list(np.shape(n)) + list(np.shape(t)) + list(self.shape)
+        out_array = np.zeros(out_shape, dtype=flint)
+        for idx, tt in np.ndenumerate(t):
+            pre = [np.s_[:]]*len(np.shape(n))
+            post = [np.s_[:]]*len(self.shape)
+            array_idx = tuple(pre + list(idx) + post)
+            out_array[array_idx] = self.d_nv(tt, n)
+        return out_array
+
+    def d_nv(self, t: Num, n: int) -> Point:
+        """Evaluate derivative non-vectorized over the t parameter
+        @param t The parametric value
+        @param n The order of the derivative
+        @return The n^th derivative of the curve
+        """
+        out_shape = list(np.shape(n)) + list(self.shape)
+        out_array = np.zeros(out_shape, dtype=flint)
+        for idx, nn in np.ndenumerate(n):
+            out_array[idx] = self.d_nv_nv(t, nn)
+        return out_array
+
+    def d_nv_nv(self, t: Num, n: int) -> Point:
+        """Evaluate derivative non-vectorized over the t and n parameters
         @param t The parametric value
         @param n The order of the derivative
         @return The n^th derivative of the curve
