@@ -18,11 +18,27 @@ Space curve base class
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
+from typing import Sequence
+import numpy.typing as npt
+
 from ..types import *
+
+def param_vectorize(ret_shape: Sequence[int]):
+    def decorator_vectorize(func: Callable[[Num], npt.NDArray[flint]]):
+        def wrapper(t: npt.ArrayLike(Num), *args: Any)-> npt.NDArray[flint]:
+            out_shape = list(np.shape(t)) + list(ret_shape)
+            out_array = np.zeros(out_shape, dtype=flint)
+            for idx, tt in nd.enumerate(t, *args):
+                out_array[idx] = func(tt)
+            return out_array
+        return wrapper
+    return decorator_vectorize
+
 
 class ParaCurve:
     """A parametric space curve for t in R to R^3"""
 
+    @param_vectorize(self.shape)
     def __call__(self, t: Num) -> Point:
         """Evaluate the curve
         @param t The parametric value
