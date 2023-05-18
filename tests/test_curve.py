@@ -32,29 +32,18 @@ class MissingMethods(ParaCurve):
 
 class Parabola(ParaCurve):
     """Give a parabola in 2-D"""
+    shape = (2,)
 
-    def __call__(self, x):
-        """Evalute the parabola"""
-        return self.d(x, 0)
-
-    def d(self, x, n = 1):
+    def d_nv(self, x, n):
         """Evaluate the nth order derivatives of the parabola"""
-        v_shape = list(np.shape(x)) + [2]
-        out_shape = list(np.shape(n)) + v_shape
-        out_array = np.zeros(out_shape, dtype=flint)
-        with np.nditer(np.array(n), flags=['multi_index']) as der_iter:
-            for nn in der_iter:
-                v_array = np.zeros(v_shape, dtype=flint)
-                with np.nditer(np.array(x), flags=['multi_index']) as it:
-                    for xx in it:
-                        if nn == 0:
-                            v_array[it.multi_index] = np.array([xx, xx*xx])
-                        elif nn == 1:
-                            v_array[it.multi_index] = np.array([1, 2*xx])
-                        elif nn == 2:
-                            v_array[it.multi_index] = np.array([0, 2])
-                out_array[der_iter.multi_index] = v_array
-        return out_array
+        res = np.zeros((2,), dtype=flint)
+        if n == 0:
+            res = np.array([x, x*x], dtype=flint)
+        elif n == 1:
+            res = np.array([1, 2*x], dtype=flint)
+        elif n == 2:
+            res = np.array([0, 2], dtype=flint)
+        return res
 
 
 class TestParaCurve:
@@ -62,11 +51,11 @@ class TestParaCurve:
 
     def test_exception(self):
         mm = MissingMethods()
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(AttributeError):
             mm(1.0)
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(AttributeError):
             mm.d(1.0)
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(AttributeError):
             mm.d(1.0,2)
 
     def test_tangent_scalar(self):

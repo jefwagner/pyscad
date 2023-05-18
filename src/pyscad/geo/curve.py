@@ -23,22 +23,10 @@ import numpy.typing as npt
 
 from ..types import *
 
-def param_vectorize(ret_shape: Sequence[int]):
-    def decorator_vectorize(func: Callable[[Num], npt.NDArray[flint]]):
-        def wrapper(t: npt.ArrayLike(Num), *args: Any)-> npt.NDArray[flint]:
-            out_shape = list(np.shape(t)) + list(ret_shape)
-            out_array = np.zeros(out_shape, dtype=flint)
-            for idx, tt in nd.enumerate(t, *args):
-                out_array[idx] = func(tt)
-            return out_array
-        return wrapper
-    return decorator_vectorize
-
 
 class ParaCurve:
     """A parametric space curve for t in R to R^3"""
 
-    @param_vectorize(self.shape)
     def __call__(self, t: Num) -> Point:
         """Evaluate the curve
         @param t The parametric value
@@ -61,8 +49,8 @@ class ParaCurve:
             out_array[array_idx] = self.d_nv(tt, n)
         return out_array
 
-    def d_nv(self, t: Num, n: int) -> Point:
-        """Evaluate derivative non-vectorized over the t parameter
+    def d_vec(self, t: Num, n: int) -> Point:
+        """Evaluate derivative vectorized over the derivative orders
         @param t The parametric value
         @param n The order of the derivative
         @return The n^th derivative of the curve
@@ -70,10 +58,10 @@ class ParaCurve:
         out_shape = list(np.shape(n)) + list(self.shape)
         out_array = np.zeros(out_shape, dtype=flint)
         for idx, nn in np.ndenumerate(n):
-            out_array[idx] = self.d_nv_nv(t, nn)
+            out_array[idx] = self.d_nv(t, nn)
         return out_array
 
-    def d_nv_nv(self, t: Num, n: int) -> Point:
+    def d_nv(self, t: Num, n: int) -> Point:
         """Evaluate derivative non-vectorized over the t and n parameters
         @param t The parametric value
         @param n The order of the derivative
@@ -86,21 +74,24 @@ class ParaCurve:
         @param t The parametric value
         @return The tangent of the curve
         """
-        d = self.d(t)
-        return d/mag(d)[...,np.newaxis]
+        out_shape = list(np.shape(t)) + list(self.shape)
+        out_array = np.zeros(out_shape, dtype=flint)
+        for idx, tt in np.ndenumerate(t):
+            d = self.d_vec(tt, 1)
+            m = mag(d)
+            out_array[idx] = d if m == 0 else d/m
+        return out_array
 
     def kap(self, t: Num) -> Point:
         """Evaluate the curvature of the space curve at a parametric value
         @param t The parametric value
         @return The curvature of the curve
         """
-        t = np.array(t, dtype=flint)
-        d1, d2 = self.d(t,[1,2])
-        cr = np.cross(d1,d2)
-        denom = mag(d1)*mag(d1)*mag(d1)
-        if t.shape == cr.shape:
-            num = cr
-            return num/denom
-        else:
-            num = mag(cr)
-            return num/denom[...,np.newaxis]
+        out_shape = list(np.shape(t))
+        out_array = np.zeros(out_shape, dtype=flint)
+        for idx, tt in np.ndenumerate(t):
+            d1, d2 = self.d_vec(tt,[1,2])
+            cr = np.cross(d1,d2)
+            denom = mag(d1)*mag(d1)*mag(d1)
+            out_array[idx] = flint(0) if denom == 0 else cr/denom
+        return out_array
