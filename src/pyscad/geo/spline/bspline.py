@@ -40,33 +40,30 @@ class BSplineCurve(ParaCurve):
         """
         if len(t) != len(c) + p + 1:
             raise ValueError("Knot vector wrong length for control points")
-        self.cpts = np.array(c, dtype=flint)
-        self.cpts_array = [self.cpts] + [None for _ in range(p)]
         self.p = p
         self.t = KnotVector(t)
+        self.cpts = np.array(c, dtype=flint)
+        self.shape = self.cpts[0].shape
+        self.cpts_array = []
+        self.calc_cpts_array(self.cpts, self.cpts_array)
 
-    def _calc_d_cpts(self, c: list[npt.NDArray[flint]], n: int):
+    def calc_cpts_array(self, c: npt.NDArray[flint], arr: list[npt.NDArray[flint]]):
         """Calculate the control points for the derivative spline
         @param c The control points
-        @param n Degree of the derivative
+        @param arr The list to hold the derivative control points
         """
-        if n > self.p:
-            raise ValueError("Can only calculate first {self.p} derivative control points")
-        if n == 0:
-            raise ValueError("Can not calculate 0th order points, must be given")
-        else:
-            if c[n-1] is None:
-                self._calc_d_cpts(c, n-1)
-            new_shape = list(c[n-1].shape)
-            new_shape[0] += 1
-            r = np.zeros(new_shape, dtype=flint)
-            r[:-1] = c[n-1][:]
-            p = self.p-(n-1)
-            for i in range(new_shape[0]-1,-1,-1):
+        arr.append(c)
+        shape = list(c.shape)
+        for n in range(self.p):
+            shape[0] += 1
+            r = np.zeros(shape, dtype=flint)
+            r[:-1] = arr[-1][:]
+            p = self.p-n
+            for i in range(shape[0]-1,-1,-1):
                 dt = self.t[i+p]-self.t[i]
                 r_im1 = 0*r[0] if i-1 == -1 else r[i-1]
                 r[i] = 0*r[0] if dt == 0 else p*(r[i]-r_im1)/dt
-            c[n] = r
+            arr.append(r)
 
     def _deboor_1d(self, c: npt.NDArray[flint], x: Num, n: int = 0) -> Point:
         """Perform de Boor's algorithm with arbitrary control points
@@ -96,34 +93,16 @@ class BSplineCurve(ParaCurve):
         """
         return self.d(x, 0)
             
-    def d(self, x: Num, n: int = 1) -> Point:
+    def d_nv(self, x: Num, n: int = 1) -> Point:
         """Evaluate the n^th order derivative of the spline curve
         @param x The parametric point
         @param n The order of the derivative
         @return The value of the derivative curve at the parametric point x
         """
-        # Shape of the points
-        c_shape = list(np.shape(self.cpts[0]))
-        # Shape for a single array of evaluations
-        v_shape = list(np.shape(x)) + c_shape
-        # Shape of the output
-        out_shape = list(np.shape(n)) + v_shape
-        out_array = np.zeros(out_shape, dtype=flint)
-        # Loop over all required derivatives
-        with np.nditer(n, flags=['multi_index']) as der_iter:
-            for nn in der_iter:
-                if nn > self.p:
-                    out_array[der_iter.multi_index] = np.zeros(v_shape, dtype=flint)
-                else:
-                    if self.cpts_array[nn] is None:
-                        self._calc_d_cpts(self.cpts_array, nn)
-                    c = self.cpts_array[nn]
-                    v_array = np. zeros(v_shape, dtype=flint)
-                    with np.nditer(np.array(x), flags=['multi_index']) as it:
-                        for xx in it:
-                            v_array[it.multi_index] = self._deboor_1d(c, xx, nn)
-                    out_array[der_iter.multi_index] = v_array
-        return out_array
+        if n > self.p:
+            return np.zeros(self.shape, dtype=flint)
+        else:
+            return self._deboor_1d(self.cpts_array[n], x, n)
 
 
 class BSplineSurf(ParaSurf):

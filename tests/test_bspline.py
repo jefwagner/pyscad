@@ -134,26 +134,17 @@ class TestBSplineCurveInternal:
         with pytest.raises(ValueError):
             bs = BSplineCurve([1],2,[1,2,3])
 
+    def test_calc_cpts_array(self):
+        c = np.array([1], dtype=flint)
+        bs = BSplineCurve([1], 2, [0,1,2,3])
+        assert np.alltrue( bs.cpts_array[1] == np.array([1,-1]) )
+        assert np.alltrue( bs.cpts_array[2] == np.array([1,-2,1]) )
+
     def test_deboor(self):
         c = np.array([1], dtype=flint)
         bs = BSplineCurve(c, 2, [0,1,2,3])
         for x in np.linspace(0,3,41):
             assert bs._deboor_1d(c, x) == simple_basis(x)
-
-    def test_calc_d_cpts(self):
-        bs = BSplineCurve([1], 2, [0,1,2,3])
-        assert bs.cpts_array[1] is None
-        assert bs.cpts_array[2] is None
-        bs._calc_d_cpts(bs.cpts_array, 2)
-        assert np.alltrue( bs.cpts_array[1] == np.array([1,-1]) )
-        assert np.alltrue( bs.cpts_array[2] == np.array([1,-2,1]) )
-
-    def test_calc_d_cpts_exceptions(self):
-        bs = BSplineCurve([1], 2, [0,1,2,3])
-        with pytest.raises(ValueError):
-            bs._calc_d_cpts(bs.cpts_array, 0)
-        with pytest.raises(ValueError):
-            bs._calc_d_cpts(bs.cpts_array, 3)
 
 
 class TestBSplineCurveEval:
