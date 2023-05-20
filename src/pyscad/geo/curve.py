@@ -42,11 +42,11 @@ class ParaCurve:
         """
         out_shape = list(np.shape(n)) + list(np.shape(t)) + list(self.shape)
         out_array = np.zeros(out_shape, dtype=flint)
+        pre = [np.s_[:]]*len(np.shape(n))
+        post = [np.s_[:]]*len(self.shape)
         for idx, tt in np.ndenumerate(t):
-            pre = [np.s_[:]]*len(np.shape(n))
-            post = [np.s_[:]]*len(self.shape)
             array_idx = tuple(pre + list(idx) + post)
-            out_array[array_idx] = self.d_nv(tt, n)
+            out_array[array_idx] = self.d_vec(tt, n)
         return out_array
 
     def d_vec(self, t: Num, n: int) -> Point:
