@@ -32,7 +32,7 @@ class ParaSurf:
         return self.d(u, v, 0, 0)
 
     @staticmethod
-    def to_array(u: npt.ArrayLike, v: npt.ArrayLike, dtype=npt.DTypeLike) -> tuple[npt.NDArray[flint], npt.NDArray[flint]]:
+    def to_array(u: npt.ArrayLike, v: npt.ArrayLike, dtype: npt.DTypeLike = flint) -> tuple[npt.NDArray[flint], npt.NDArray[flint]]:
         if np.shape(u) != np.shape(v):
             raise ValueError("Shape of the u and v parameter arguments must match")
         return np.array(u, dtype=dtype), np.array(v, dtype=dtype)
@@ -66,7 +66,7 @@ class ParaSurf:
         nu, nv = self.to_array(nu, nv, dtype=int)
         out_shape = list(np.shape(nu)) + list(self.shape)
         out_array = np.zeros(out_shape, dtype=flint)
-        for idx in np.ndindex(**np.shape(nu)):
+        for idx in np.ndindex(*np.shape(nu)):
             out_array[idx] = self.d_nv(u, v, nu[idx], nv[idx])
         return out_array
 
@@ -89,7 +89,7 @@ class ParaSurf:
         u, v = self.to_array(u, v)
         out_shape = list(np.shape(u)) + list(self.shape)
         out_array = np.zeros(out_shape, dtype=flint)
-        for idx in np.ndindex(**np.shape(u)):
+        for idx in np.ndindex(*np.shape(u)):
             du, dv = self.d_vec(u[idx],v[idx],[1,0],[0,1])
             n = np.cross(du, dv)
             m = mag(n)
@@ -102,7 +102,7 @@ class ParaSurf:
         @param v The v parameter
         @return The E, F, G, L, M, and N components of the second fundamental form
         """
-        du, dv, duu, duv, dvv = self.d(u,v,[1,0,2,1,0],[0,1,0,1,2])
+        du, dv, duu, duv, dvv = self.d_vec(u,v,[1,0,2,1,0],[0,1,0,1,2])
         n = np.cross(du, dv)
         m = mag(n)
         n = n if m == 0 else n/m
@@ -120,10 +120,10 @@ class ParaSurf:
         @param v The v parameter
         @return The mean curvature of the surface at (u,v)
         """
-        u, v = self.t_array(u, v)
-        out_array(np.shape(u), dtype=flint)
-        for idx in np.ndindex(np.shape(u)):
-            E, F, G, L, M, N = self.ff(u[idx], v[idx])
+        u, v = self.to_array(u, v)
+        out_array = np.zeros(np.shape(u), dtype=flint)
+        for idx in np.ndindex(*np.shape(u)):
+            E, F, G, L, M, N = self.ff_nv(u[idx], v[idx])
             out_array[idx] = (E*N-2*F*M+G*L)/(2*(E*G-F*F))
         return out_array
     
@@ -133,10 +133,10 @@ class ParaSurf:
         @param v The v parameter
         @return The mean curvature of the surface at (u,v)
         """
-        u, v = self.t_array(u, v)
-        out_array(np.shape(u), dtype=flint)
-        for idx in np.ndindex(np.shape(u)):
-            E, F, G, L, M, N = self.ff(u[idx], v[idx])
+        u, v = self.to_array(u, v)
+        out_array = np.zeros(np.shape(u), dtype=flint)
+        for idx in np.ndindex(*np.shape(u)):
+            E, F, G, L, M, N = self.ff_nv(u[idx], v[idx])
             out_array[idx] =  (L*N-M*M)/(E*G-F*F)
         return out_array
 
@@ -146,17 +146,17 @@ class ParaSurf:
         @param v The v parameter
         @return The k+ and k- principal curvature
         """
-        u, v = self.t_array(u, v)
+        u, v = self.to_array(u, v)
         out_shape = tuple([2] + list(np.shape(u)))
-        out_array(out_shape, dtype=flint)
-        for idx in np.ndindex(np.shape(u)):
-            E, F, G, L, M, N = self.ff(u[idx], v[idx])
+        out_array = np.zeros(out_shape, dtype=flint)
+        for idx in np.ndindex(*np.shape(u)):
+            E, F, G, L, M, N = self.ff_nv(u[idx], v[idx])
             a = (E*G - F*F)
             b = (L*G - 2*M*F + N*E)/(2*a)
             c =(L*N - M*M)/a
             d = np.sqrt(b*b - c)
-            kp_idx = tuple(0,*idx)
+            kp_idx = tuple([0] + list(idx))
             out_array[kp_idx] = b + d
-            km_idx = tuple(1, *idx)
+            km_idx = tuple([1] + list(idx))
             out_array[km_idx] = b - d
         return out_array
