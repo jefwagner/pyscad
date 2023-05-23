@@ -23,13 +23,25 @@ from typing import Sequence
 from ...types import *
 from .bspline import BSplineCurve, BSplineSurf
 
-_binom = np.array([
-    [1,0,0,0,0],
-    [1,1,0,0,0],
-    [1,2,1,0,0],
-    [1,3,3,1,0],
-    [1,4,6,4,1],
-])
+# _binom = np.array([
+#     [1,0,0,0,0],
+#     [1,1,0,0,0],
+#     [1,2,1,0,0],
+#     [1,3,3,1,0],
+#     [1,4,6,4,1],
+# ])
+
+def binom(n: int, k: int) -> int:
+    """Binomial coefficient, n choose k"""
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1
+    k = min(k, n-k)
+    c = 1
+    for i in range(k):
+        c = c * (n-i) // (i+1)
+    return c
 
 class NurbsCurve(BSplineCurve):
     """Non-Uniform Rational Basis Spline (NURBS) space curve"""
@@ -50,43 +62,41 @@ class NurbsCurve(BSplineCurve):
         super().__init__(c, p, t)
         self.weights = np.array(w, dtype = flint)
         cw = self.cpts*self.weights[...,np.newaxis]
-        self.cpts_array[0] = cw
-        self.w_array = [self.weights] + [None for _ in range(p)]
+        self.cpts_array = []
+        self.w_array = []
+        self.calc_cpts_array(cw, self.cpts_array)
+        self.calc_cpts_array(self.weights, self.w_array)
 
-    def d(self, x: Num, n: int = 1) -> Point:
+    def d_vec(self, x: Num, n: int = 1) -> Point:
         """Evaluate the n^th order derivative of the spline curve
         @param x The parametric point
         @param n The order of the derivative
         @return The value of the derivative curve at the parametric point x
         """
-        v_shape = list(np.shape(x)) + list(np.shape(self.cpts[0]))
-        out_shape = list(np.shape(n)) + v_shape
+        out_shape = list(np.shape(n)) + list(self.shape)
         out_array = np.zeros(out_shape, dtype=flint)
-        # v_array = np.zeros(v_shape, dtype=flint)
+        n = np.array(n)
         nmax = np.max(n)
-        with np.nditer(np.array(x), flags=['multi_index']) as it:
-            for xx in it:
-                c = self.cpts_array[0]
-                w = self.w_array[0]
-                c_list = [self._deboor_1d(c, xx)]
-                w_list = [self._deboor_1d(w, xx)]
-                s_list = [c_list[0]/(w_list[0] if w_list[0] != 0 else 1)]
-                for i in range(1,nmax+1):
-                    if self.cpts_array[i] is None:
-                        self._calc_d_cpts(self.cpts_array, i)
-                        self._calc_d_cpts(self.w_array, i)
-                    c = self.cpts_array[i]
-                    w = self.w_array[i]
-                    c_list.append(self._deboor_1d(c, xx, i))
-                    w_list.append(self._deboor_1d(w, xx, i))
-                    res = c_list[-1]
-                    for k in range(1,i+1):
-                        res -= _binom[i,k]*(s_list[i-k]*w_list[k])
-                    s_list.append(res/(w_list[0] if w_list[0] != 0 else 1))
-                with np.nditer(np.array(n), flags=['multi_index']) as der_iter:
-                    for nn in der_iter:
-                        idx = tuple(list(der_iter.multi_index) + list(it.multi_index))
-                        out_array[idx] = s_list[nn]
+        c = self.cpts_array[0]
+        w = self.w_array[0]
+        c_list = [self._deboor_1d(c, x)]
+        w_list = [self._deboor_1d(w, x)]
+        w0 = w_list[0] if w_list[0] != 0 else flint(1)
+        s_list = [c_list[0]/w0]
+        for i in range(1,nmax+1):
+            if self.cpts_array[i] is None:
+                self._calc_d_cpts(self.cpts_array, i)
+                self._calc_d_cpts(self.w_array, i)
+            c = self.cpts_array[i]
+            w = self.w_array[i]
+            c_list.append(self._deboor_1d(c, x, i))
+            w_list.append(self._deboor_1d(w, x, i))
+            res = c_list[-1]
+            for k in range(1,i+1):
+                res -= binom(i,k)*(s_list[i-k]*w_list[k])
+            s_list.append(res/w0)
+        for idx in np.ndindex(n.shape):
+            out_array[idx] = s_list[n[idx]]
         return out_array
 
 
