@@ -122,11 +122,12 @@ class NurbsSurf(BSplineSurf):
         if self.cpts.shape[:2] != self.weights.shape[:]:
             raise ValueError("Control point and weight arrays must have the same shape")
         cw = self.cpts*self.weights[...,np.newaxis]
-        self.cpts_array[0][0] = cw
-        self.w_array = [[None for _ in range(pv+1)] for _ in range(pu+1)]
-        self.w_array[0][0] = self.weights
+        self.cpts_array = []
+        self.w_array = []
+        self.calc_cpts_array(cw, self.cpts_array)
+        self.calc_cpts_array(self.weights, self.w_array)
 
-    def d(self, u: Num, v: Num, nu: int, nv: int) -> Point:
+    def d_vec(self, u: Num, v: Num, nu: int, nv: int) -> Point:
         """Evaluate the (nu, nv) partial derivative of the surface
         @param u The u parameter
         @param v The v parameter
@@ -134,14 +135,8 @@ class NurbsSurf(BSplineSurf):
         @param nv The order of the v partial derivative
         @return The value of the partial derivative at the point (u,v)
         """
-        # Holder for output data
-        if np.shape(u) != np.shape(v):
-            raise ValueError("u and v arguments must be same shape")
-        if np.shape(nu) != np.shape(nv):
-            raise ValueError("nu and nv derivative orders must be same shape")
-        c_shape = list(np.shape(self.cpts[0,0]))
-        v_shape = list(np.shape(u)) + c_shape
-        out_shape = list(np.shape(nu)) + v_shape
+        nu, nv = self.to_array(nu, nv, dtype=int)
+        out_shape = list(np.shape(nu)) + list(self.shape)
         out_array = np.zeros(out_shape, dtype=flint)
         # Working space
         w_arr_shape = [np.max(nu)+1, np.max(nv)+1]
@@ -154,44 +149,40 @@ class NurbsSurf(BSplineSurf):
         for du, dv in np.nditer([np.array(nu), np.array(nv)]):
             for i in range(du+1):
                 nvmax[i] = nvmax[i] if nvmax[i] >= dv else dv
-        with np.nditer([np.array(u),np.array(v)], flags=['multi_index']) as it:
-            for uu, vv in it:
-                c = self.cpts_array[0][0]
-                w = self.w_array[0][0]
-                c_arr[0,0] = self._deboor_2d(c, uu, vv, 0, 0)
-                _w = self._deboor_2d(w, uu, vv, 0, 0)
-                w_arr[0,0] = _w if _w != 0 else flint(1.0)
-                s_arr[0,0] = c_arr[0,0]/w_arr[0,0]
-                for j in range(1, nvmax[0]+1):
-                    if self.cpts_array[0][j] is None:
-                        self._calc_d_cpts_2d(self.cpts_array, 0, j)
-                        self._calc_d_cpts_2d(self.w_array, 0, j)
-                    c = self.cpts_array[0][j]
-                    w = self.w_array[0][j]
-                    c_arr[0,j] = self._deboor_2d(c, uu, vv, 0, j)
-                    w_arr[0,j] = self._deboor_2d(w, uu, vv, 0, j)
-                    s_arr[0,j] = c_arr[0,j]
-                    for jj in range(1, j+1):
-                        s_arr[0,j] -= _binom[j,jj]*s_arr[0,j-jj]*w_arr[0,jj]
-                    s_arr[0,j] /= w_arr[0,0]
-                for i in range(1,numax+1):
-                    for j in range(nvmax[i]+1):
-                        if self.cpts_array[i][j] is None:
-                            self._calc_d_cpts_2d(self.cpts_array, i, j)
-                            self._calc_d_cpts_2d(self.w_array, i, j)
-                        c = self.cpts_array[i][j]
-                        w = self.w_array[i][j]
-                        c_arr[i,j] = self._deboor_2d(c, uu, vv, i, j)
-                        w_arr[i,j] = self._deboor_2d(w, uu, vv, i, j)
-                        s_arr[i,j] = c_arr[i,j]
-                        for ii in range(1, i+1):
-                            for jj in range(j+1):
-                                term = _binom[i, ii]*_binom[j,jj]
-                                term *= s_arr[i-ii,j-jj]*w_arr[ii,jj]
-                                s_arr[i,j] -= term
-                        s_arr[i,j] /= w_arr[0,0]
-                with np.nditer([np.array(nu), np.array(nv)], flags=['multi_index']) as der_iter:
-                    for du, dv in der_iter:
-                        idx = tuple(list(der_iter.multi_index) + list(it.multi_index))
-                        out_array[idx] = s_arr[du,dv]
+        c = self.cpts_array[0][0]
+        w = self.w_array[0][0]
+        c_arr[0,0] = self._deboor_2d(c, u, v, 0, 0)
+        _w = self._deboor_2d(w, u, v, 0, 0)
+        w_arr[0,0] = _w if _w != 0 else flint(1.0)
+        s_arr[0,0] = c_arr[0,0]/w_arr[0,0]
+        for j in range(1, nvmax[0]+1):
+            if self.cpts_array[0][j] is None:
+                self._calc_d_cpts_2d(self.cpts_array, 0, j)
+                self._calc_d_cpts_2d(self.w_array, 0, j)
+            c = self.cpts_array[0][j]
+            w = self.w_array[0][j]
+            c_arr[0,j] = self._deboor_2d(c, u, v, 0, j)
+            w_arr[0,j] = self._deboor_2d(w, u, v, 0, j)
+            s_arr[0,j] = c_arr[0,j]
+            for jj in range(1, j+1):
+                s_arr[0,j] -= binom(j,jj)*s_arr[0,j-jj]*w_arr[0,jj]
+            s_arr[0,j] /= w_arr[0,0]
+        for i in range(1,numax+1):
+            for j in range(nvmax[i]+1):
+                if self.cpts_array[i][j] is None:
+                    self._calc_d_cpts_2d(self.cpts_array, i, j)
+                    self._calc_d_cpts_2d(self.w_array, i, j)
+                c = self.cpts_array[i][j]
+                w = self.w_array[i][j]
+                c_arr[i,j] = self._deboor_2d(c, u, v, i, j)
+                w_arr[i,j] = self._deboor_2d(w, u, v, i, j)
+                s_arr[i,j] = c_arr[i,j]
+                for ii in range(1, i+1):
+                    for jj in range(j+1):
+                        term = binom(i,ii)*binom(j,jj)
+                        term *= s_arr[i-ii,j-jj]*w_arr[ii,jj]
+                        s_arr[i,j] -= term
+                s_arr[i,j] /= w_arr[0,0]
+        for idx in np.ndindex(nu.shape):
+            out_array[idx] = s_arr[nu[idx], nv[idx]]
         return out_array

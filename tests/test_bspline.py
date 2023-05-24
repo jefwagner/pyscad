@@ -263,18 +263,8 @@ class TestBSplineSurfInternal:
         with pytest.raises(ValueError):
             BSplineSurf([[1],[2]], 2, 3, [0,1,2,3], [0,1,2,3,4])
 
-    def test_calc_d_cpts_2d(self):
+    def test_calc_cpts_array(self):
         bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
-        assert bs.cpts_array[1][0] is None
-        bs._calc_d_cpts_2d( bs.cpts_array, 1, 0)
-        assert np.alltrue( bs.cpts_array[1][0] == np.array([[1],[-1]], dtype=flint) )
-        assert bs.cpts_array[0][1] is None
-        bs._calc_d_cpts_2d( bs.cpts_array, 0, 1)
-        assert np.alltrue( bs.cpts_array[0][1] == np.array([[1,-1]]) )
-
-    def test_calc_d_cpts_all(self):
-        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
-        bs._calc_d_cpts_2d( bs.cpts_array, 2, 3)
         assert np.alltrue( bs.cpts_array[0][1] == np.array([[1,-1]]) )
         assert np.alltrue( bs.cpts_array[0][2] == np.array([[1,-2,1]]) )
         assert np.alltrue( bs.cpts_array[0][3] == np.array([[1,-3,3,-1]]) )
@@ -282,30 +272,18 @@ class TestBSplineSurfInternal:
         assert np.alltrue( bs.cpts_array[1][3] == target)
         target = np.array([[1,-3,3,-1],[-2,6,-6,2],[1,-3,3,-1]])
         assert np.alltrue( bs.cpts_array[2][3] == target)
-        bs._calc_d_cpts_2d( bs.cpts_array, 2, 2)
         target = np.array([[1,-2,1],[-1,2,-1]])
         assert np.alltrue( bs.cpts_array[1][2] == target)
         target = np.array([[1,-2,1],[-2,4,-2],[1,-2,1]])
         assert np.alltrue( bs.cpts_array[2][2] == target)
-        bs._calc_d_cpts_2d( bs.cpts_array, 2, 1)
         target = np.array([[1,-1],[-1,1]])
         assert np.alltrue( bs.cpts_array[1][1] == target)
         target = np.array([[1,-1],[-2,2],[1,-1]])
         assert np.alltrue( bs.cpts_array[2][1] == target)
-        bs._calc_d_cpts_2d( bs.cpts_array, 2, 0)
         target = np.array([[1],[-1]])
         assert np.alltrue( bs.cpts_array[1][0] == target)
         target = np.array([[1],[-2],[1]])
         assert np.alltrue( bs.cpts_array[2][0] == target)
-
-    def test_calc_d_cpts_2d_exceptions(self):
-        bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
-        with pytest.raises(ValueError):
-            bs._calc_d_cpts_2d( bs.cpts_array, 3, 0)
-        with pytest.raises(ValueError):
-            bs._calc_d_cpts_2d( bs.cpts_array, 0, 4)
-        with pytest.raises(ValueError):
-            bs._calc_d_cpts_2d( bs.cpts_array, 0, 0)
 
     def test_deboor_2d(self):
         bs = BSplineSurf([[1]], 2, 3, [0,1,2,3], [0,1,2,3,4])
@@ -322,7 +300,6 @@ class TestBSplineSurfInternal:
             su = simple_basis_d1(u)
             for v in np.linspace(0,4,10):
                 sv = cubic_basis_d1(v)
-                bs._calc_d_cpts_2d( bs.cpts_array, 1, 1)
                 calc = bs._deboor_2d( bs.cpts_array[1][1], u, v, 1, 1)
                 assert calc == su*sv
 
