@@ -91,7 +91,21 @@ class ParaCurve:
         out_array = np.zeros(out_shape, dtype=flint)
         for idx, tt in np.ndenumerate(t):
             d1, d2 = self.d_vec(tt,[1,2])
-            cr = np.cross(d1,d2)
-            denom = mag(d1)*mag(d1)*mag(d1)
-            out_array[idx] = flint(0) if denom == 0 else cr/denom
+            if mag(d1) == 0:
+                out = np.zeros(np.shape, dtype=flint)
+                if mag(d2) == 0:
+                    for x in out:
+                        x.a = np.nan
+                        x.b = np.nan
+                        x.v = np.nan
+                else:
+                    for x in out:
+                        x.a = np.inf
+                        x.b = np.inf
+                        x.v = np.inf
+                out_array[idx] = out
+            else:                    
+                num = np.cross(d1,d2)
+                denom = mag(d1)*mag(d1)*mag(d1)
+                out_array[idx] = num/denom
         return out_array

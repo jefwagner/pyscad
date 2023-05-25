@@ -115,6 +115,7 @@ class BSplineSurf(ParaSurf):
         @param tu The u direction knot-vector
         @param tv The v direction knot-vector
         """
+        super().__init__()
         if len(tu) != len(c) + pu + 1:
             raise ValueError("Knot vector wrong length for control points")
         if len(tv) != len(c[0]) + pv + 1:
