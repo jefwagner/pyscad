@@ -34,6 +34,7 @@ class Torus(ParaSurf):
     shape = (3,)
 
     def __init__(self, R=3.0, a=1.0):
+        self.degenerate_points = {}
         self.R = R
         self.a = a
 
@@ -77,7 +78,7 @@ class Torus(ParaSurf):
 
 
 class TestParaSurf:
-    """Vlaidate the behavior of something"""
+    """Validate the behavior of something"""
 
     def test_exceptions(self):
         mm = MissingMethods()
@@ -106,3 +107,11 @@ class TestParaSurf:
         kp, km = t.k_princ(0,0)
         assert kp == -0.25
         assert km == -1
+
+    def test_degenerate_point(self):
+        t = Torus(R=0, a=1)
+        assert np.alltrue( t(0,0) == [1,0,0] )
+        assert np.alltrue( t(0.25,0) == [0,1,0] )
+        assert np.alltrue( t(0,0.25) == [0,0,1] )
+        assert np.alltrue( t(0.25,0.25) == [0,0,1] )
+        assert np.alltrue( t.norm(0,0.25) == [0,0,1] )

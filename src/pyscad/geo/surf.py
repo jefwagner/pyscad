@@ -96,22 +96,22 @@ class ParaSurf:
             du, dv = self.d_vec(u[idx],v[idx],[1,0],[0,1])
             if mag(du) == 0:
                 if mag(dv) == 0:
-                    ...
+                    out_array[idx] = np.zeros(self.shape, dtype=flint)
                 else:
-                    out_array[idx] = self.norm_degenerate(u[idx],v[idx],dv,'u')
+                    out_array[idx] = self.norm_zero_len(u[idx],v[idx],dv,'u')
             elif mag(dv) == 0:
-                out_array[idx] = self.norm_degenerate(u[idx],v[idx],du,'v')
+                out_array[idx] = self.norm_zero_len(u[idx],v[idx],du,'v')
             else:
                 n = np.cross(du, dv)
                 m = mag(n)
                 if mag(n) == 0:
-                    ...
+                    out_array[idx] = np.zeros(self.shape, dtype=flint)
                 else:
                     out_array[idx] = n/m
         return out_array
 
-    def norm_degenerate(self, u: Num, v: Num, d: Vec, zdir: str) -> Vec:
-        """Calculate the normal vector for a degenerate point
+    def norm_zero_len(self, u: Num, v: Num, d: Vec, zdir: str) -> Vec:
+        """Calculate the normal vector for a degenerate point on a zero length edge
         @param u The u parameter
         @param v The v parameter
         @param d The non-zero partial derivative
@@ -120,19 +120,19 @@ class ParaSurf:
         # Memorization to avoid recalculating
         for ku,kv in self.degenerate_points.keys():
             if u == ku and v == kv:
-                return self.norm_degenerate((ku, kv))
+                return self.degenerate_points((ku, kv))
         step = 0.1
-        nu, nv =  0, 1 if zdir == 'u' else 1, 0
+        nu, nv =  (0, 1) if zdir == 'u' else (1, 0)
         p0 = self.d_vec(u, v, 0, 0)
         p1 = self.d_vec(u+2*step*nv, v+2*step*nu, 0, 0)
-        if p0 == p1:
+        if np.alltrue(p0 == p1):
             d1 = self.d_vec(u+step*nv, v+step*nu, nu, nv)
             n1 = np.cross(d, d1)
             m1 = mag(n1)
-            d2 = self.d_vec(u+2*step*nv, v+2*setp*nu, nu, nv)
-            n2 = np.cross(dv,dv2)
+            d2 = self.d_vec(u+2*step*nv, v+2*step*nu, nu, nv)
+            n2 = np.cross(d,d2)
             m2 = mag(n2)
-            if m1 != 0 and m2 != 0 and n1/m1 == n2/m2:
+            if m1 != 0 and m2 != 0 and np.alltrue(n1/m1 == n2/m2):
                 self.degenerate_points[(u,v)] = n2/m2
                 return n2/m2
         out = np.zeros(self.shape, dtype=flint)
