@@ -109,3 +109,19 @@ class ParaCurve:
                 denom = mag(d1)*mag(d1)*mag(d1)
                 out_array[idx] = num/denom
         return out_array
+
+
+class Line(ParaCurve):
+    """Simple line"""
+
+    def __init__(self, p0: Point, p1: Point):
+        self.cpts = np.array([p0, p1], dtype=flint)
+        self.shape = self.cpts[0].shape
+
+    def d_nv(self, x: Num, n: int = 1) -> Point:
+        if n == 0:
+            return p0 + (p1-p0)*x
+        elif n == 1:
+            return (p1-p0)
+        else:
+            return np.zeros(self.shape, dtype=flint)
