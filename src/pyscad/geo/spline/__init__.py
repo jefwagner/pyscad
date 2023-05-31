@@ -20,4 +20,4 @@ Spline related classes
 
 from .kvec import KnotVector
 from .bspline import BSplineCurve, BSplineSurf
-from .nurbs import NurbsCurve#, NurbsSurf
+from .nurbs import NurbsCurve, NurbsSurf

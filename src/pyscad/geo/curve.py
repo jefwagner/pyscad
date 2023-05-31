@@ -91,6 +91,7 @@ class ParaCurve:
         out_array = np.zeros(out_shape, dtype=flint)
         for idx, tt in np.ndenumerate(t):
             d1, d2 = self.d_vec(tt,[1,2])
+            print(d1, d2)
             if mag(d1) == 0:
                 out = np.zeros(np.shape, dtype=flint)
                 if mag(d2) == 0:
@@ -105,7 +106,7 @@ class ParaCurve:
                         x.v = np.inf
                 out_array[idx] = out
             else:                    
-                num = np.cross(d1,d2)
+                num = mag(np.cross(d1,d2))
                 denom = mag(d1)*mag(d1)*mag(d1)
                 out_array[idx] = num/denom
         return out_array
@@ -116,9 +117,12 @@ class Line(ParaCurve):
 
     def __init__(self, p0: Point, p1: Point):
         self.cpts = np.array([p0, p1], dtype=flint)
+        if np.alltrue( self.cpts[0] == self.cpts[1] ):
+            raise ValueError("Line points must be distinct")
         self.shape = self.cpts[0].shape
 
     def d_nv(self, x: Num, n: int = 1) -> Point:
+        p0, p1 = self.cpts
         if n == 0:
             return p0 + (p1-p0)*x
         elif n == 1:
