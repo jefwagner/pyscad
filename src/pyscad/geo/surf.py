@@ -208,17 +208,17 @@ class ParaSurf:
 class Plane(ParaSurf):
 
     def __init__(self, p0, pu, pv):
-        self.cpts = np.array([[p0, pv],[pu, pu+pv-p0]], dtype=flint)
-        self.shape = self.cpts[0,0]
-        du = self.cpts[1,0]-self.cpts[0,0]
-        dv = self.cpts[0,1]-self.cpts[0,0]
+        self.cpts = np.array([p0, pu, pv], dtype=flint)
+        self.shape = self.cpts[0].shape
+        du = self.cpts[1]-self.cpts[0]
+        dv = self.cpts[2]-self.cpts[0]
         if mag(np.cross(du,dv)) == 0:
             raise ValueError("Points defining the plane cannot be co-linear")
 
     def d_nv(self, u: Num, v: Num, nu: int, nv: int) -> Point:
-        p0 = self.cpts[0,0]
-        du = self.cpts[1,0]-p0
-        dv = self.cpts[0,1]-p0
+        p0 = self.cpts[0]
+        du = self.cpts[1]-p0
+        dv = self.cpts[2]-p0
         if nu == 0 and nv == 0:
             return p0 + du*u + dv*v
         elif nu == 1 and nv == 0:

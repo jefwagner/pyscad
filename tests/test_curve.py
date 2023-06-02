@@ -24,7 +24,7 @@ import numpy as np
 from flint import flint
 
 from pyscad.types import *
-from pyscad.geo.curve import ParaCurve
+from pyscad.geo.curve import ParaCurve, Line
 
 class MissingMethods(ParaCurve):
     """Only here to validate errors"""
@@ -103,3 +103,35 @@ class TestParaCurve:
         kn, k0, kp = p.kap([-1,0,1])
         assert k0 == 2
         assert kn == kp
+
+
+class TestLine:
+
+    def test_init(self):
+        L = Line([0,0,0],[0,0,1])
+        assert isinstance(L, ParaCurve)
+        assert isinstance(L, Line)
+        assert L.shape == (3,)
+        assert isinstance(L.cpts, np.ndarray)
+
+    def test_eval(self):
+        L = Line([0,0,0],[1,2,3])
+        assert np.alltrue( L(0) == [0,0,0] )
+        assert np.alltrue( L(1) == [1,2,3] )
+        assert np.alltrue( L(0.5) == [0.5, 1, 1.5] )
+
+    def test_deriv(self):
+        L = Line([1,1,1],[1,2,3])
+        for t in np.linspace(0,1,10):
+            assert np.alltrue( L.d(t) == [0,1,2] )
+        for n in range(2,5):
+            for t in np.linspace(0,1,10):
+                assert np.alltrue( L.d(t, n) == [0,0,0] )
+
+    def test_paracurve_properties(self):
+        L = Line([1,1,1], [1,2,3])
+        tan = np.array([0,1,2], dtype=flint)/np.sqrt(flint(5))
+        for t in np.linspace(0,1,10):
+            assert np.alltrue( L.t(t) == tan )
+        for t in np.linspace(0,1,10):
+            assert np.alltrue( L.kap(t) == [0,0,0] )
