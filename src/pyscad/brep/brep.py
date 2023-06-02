@@ -25,6 +25,8 @@ from ..geo import ParaCurve, ParaSurf
 from .edge import Edge
 from .face import Face
 
+from ..geo.spline import NurbsSurf
+
 class BRep:
     """A boundary representation (or brep) of a solid object"""
     surfs: list[ParaSurf]
@@ -40,4 +42,53 @@ class BRep:
         self.verts = []
         self.faces = []
         self.edges = []
+
+    @classmethod
+    def sphere(cls):
+        c = np.array([
+            [[1,0,0],[1,1,0],[0,1,0]],
+            [[1,0,1],[1,1,1],[0,1,1]],
+            [[0,0,1],[0,0,1],[0,0,1]],
+        ], dtype=flint)
+        a = 1/np.sqrt(flint(2))
+        w = [[1,_a,1],[_a,_a*_a,_a],[1,_a,1]]
+        t = [0,0,0,1,1,1]
+        m = np.array([[0,1,0],[-1,0,0],[0,0,1]], type=flint)
+        z = np.zeros((3,), dtype=flint)
+        rot90 = Transform.from_arrays(m, z)
+        m = np.array([[1,0,0],[0,1,0],[0,0,-1]], dtype=flint)
+        reflz = Transform.from_arrays(m, z)
+        sppp = NurbsSurf(c, w, 2, 2, t, t)
+        for idx in np.ndindex((3,3)):
+            c[idx] = rot90(c[idx])
+        snpp = NurbsSurf(c, w, 2, 2, t, t)
+        for idx in np.ndindex((3,3)):
+            c[idx] = rot90(c[idx])
+        snnp = NurbsSurf(c, w, 2, 2, t, t)
+        for idx in np.ndindex((3,3)):
+            c[idx] = rot90(c[idx])
+        spnp = NurbsSurf(c, w, 2, 2, t, t)
+        for idx in np.ndindex((3,3)):
+            c[idx] = rot90(c[idx])
+            c[idx] = reflz(c[idx])
+        sppn = NurbsSurf(c, w, 2, 2, t, t)
+        for idx in np.ndindex((3,3)):
+            c[idx] = rot90(c[idx])
+        snpn = NurbsSurf(c, w, 2, 2, t, t)
+        for idx in np.ndindex((3,3)):
+            c[idx] = rot90(c[idx])
+        snnn = NurbsSurf(c, w, 2, 2, t, t)
+        for idx in np.ndindex((3,3)):
+            c[idx] = rot90(c[idx])
+        spnn = NurbsSurf(c, w, 2, 2, t, t)
+        self.surfs.extend([
+            sppp,
+            snpp,
+            snnp,
+            spnp,
+            sppn,
+            snpn,
+            snnn,
+            spnn
+        ])
 
