@@ -52,6 +52,8 @@ class Sphere(Prim):
         self.r = flint(r)
         self.trans.insert(0, Scale(self.r))
 
+    def construct_brep(self):
+        self._brep = Brep.sphere()
 
 class Box(Prim):
     """A CSG Box primitive"""

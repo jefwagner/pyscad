@@ -23,9 +23,8 @@ import numpy.typing as npt
 
 from ..types import *
 
-
 class ParaCurve:
-    """A parametric space curve for t in R to R^3"""
+    """A parametric space curve with mapping from t in R to R^2 or R^3"""
 
     def __call__(self, t: Num) -> Point:
         """Evaluate the curve
@@ -82,7 +81,7 @@ class ParaCurve:
             out_array[idx] = d if m == 0 else d/m
         return out_array
 
-    def kap(self, t: Num) -> Point:
+    def kap(self, t: Num) -> Num:
         """Evaluate the curvature of the space curve at a parametric value
         @param t The parametric value
         @return The curvature of the curve
@@ -110,6 +109,23 @@ class ParaCurve:
                 denom = mag(d1)*mag(d1)*mag(d1)
                 out_array[idx] = num/denom
         return out_array
+
+    def dist(self, t: Num, p: Point) -> tuple(Num, Num):
+        """Distance between a curve point and an arbitrary point and the derivative
+        @param t The parametric value
+        @param p The point
+        @return the distance between c(t) and p
+        """
+        c, d = self.d(t, [0,1])
+        dx = c-p
+        return (mag(dx), dx.dot(d)/mag(dx))
+    
+    def inv(self, p: Point) -> tuple(Num, Num):
+        """Find the parameter t corresponding to a point
+        @param p The point to query
+        @return A tuple with the parameter t and distance between c(t) and p
+        """
+        ...
 
 
 class Line(ParaCurve):
