@@ -20,8 +20,8 @@ Contains the constructive solid geometry (CSG) base class and methods
 
 from typing import Union, Any, Optional
 
-from ..types import *
-from ..trans import Transform, Scale, Translate, Rotate
+from ..utils.types import *
+from ..utils.trans import Transform, Scale, Translate, Rotate
 from ..brep import BRep
 
 class Csg:

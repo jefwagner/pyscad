@@ -18,5 +18,5 @@ Collection of geometry objects
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-from .surf import ParaSurf
-from .curve import ParaCurve
+from .surf import Surface
+from .curve import Curve

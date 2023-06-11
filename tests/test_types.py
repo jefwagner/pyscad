@@ -22,7 +22,7 @@ import pytest
 
 import numpy as np
 import flint as flint
-from pyscad.types import *
+from pyscad.utils.types import *
 
 class TestTypes:
     """Validate the test for generic types"""

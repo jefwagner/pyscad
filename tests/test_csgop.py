@@ -26,7 +26,7 @@ from flint import flint
 from pyscad.csg import Csg, IntXn, Diff, Sphere, Box, Cyl, Cone
 from pyscad.csg.op import Op
 from pyscad.csg import Union as Uni
-from pyscad.trans import *
+from pyscad.utils.trans import *
 
 
 class TestTrans:

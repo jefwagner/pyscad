@@ -18,6 +18,4 @@ Boundary representation objects.
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-from .brep import BRep
-from .face import Face
-from .edge import Edge, EdOri
+from .brep import BRep, Face, Edge

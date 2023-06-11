@@ -25,7 +25,6 @@ import numpy as np
 from flint import flint
 
 from .types import *
-from .linalg import det
 
 class Transform:
     """A general affine transform"""
@@ -161,4 +160,10 @@ class Rotate(Transform):
     def verify(self):
         if not super().verify():
             return False
-        return (det(self.m) == 1) and np.alltrue( self.v == np.zeros(self.v.shape) )
+        if self.m.shape == (2,2):
+            det = self.m[0,0]*self.m[1,1]-self.m[0,1]*self.m[1,0]
+        elif self.m.shape == (3,3):
+            det = self.m[0,0]*(self.m[1,1]*self.m[2,2]-self.m[1,2]*self.m[2,1])
+            det += self.m[0,1]*(self.m[1,2]*self.m[2,0]-self.m[1,0]*self.m[2,2])
+            det += self.m[0,2]*(self.m[1,0]*self.m[2,1]-self.m[1,1]*self.m[2,0])
+        return (det == 1) and np.alltrue( self.v == np.zeros(self.v.shape) )

@@ -22,7 +22,7 @@ import pytest
 
 import numpy as np
 import flint as flint
-from pyscad.trans import *
+from pyscad.utils.trans import *
 
 
 class TestTransform:

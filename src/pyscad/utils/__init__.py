@@ -1,6 +1,6 @@
-## @file face.py
+## @file geo/__init__.py 
 """\
-Contains the face topological data structure for a b-rep
+Common utilities for solid object routines
 """
 # Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
 #
@@ -18,10 +18,6 @@ Contains the face topological data structure for a b-rep
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-from .edge import Edge, EdOri
-from ..geo import ParaSurf
-
-class Face:
-    """A face in a boundary representation"""
-    surf: ParaSurf
-    eloop: list[tuple[Edge, EdOri]]
+from .types import *
+from .trans import *
+from .serde import *

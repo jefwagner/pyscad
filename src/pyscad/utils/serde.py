@@ -25,7 +25,7 @@ from flint import flint
 
 from .types import *
 from .trans import Transform
-from .csg import Csg
+from ..csg import Csg
 
 class ParamSerde:
     """Serialize and Deserialize routines for generic parameters"""

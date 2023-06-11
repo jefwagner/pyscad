@@ -25,7 +25,7 @@ from flint import flint
 
 from pyscad.csg import Csg, Sphere, Box, Cyl, Cone
 from pyscad.csg.prim import Prim
-from pyscad.trans import *
+from pyscad.utils.trans import *
 
 class TestPrimitives:
     """Boo"""

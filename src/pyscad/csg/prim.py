@@ -19,8 +19,8 @@ Contains the constructive solid geometry (CSG) primitive classes and methods
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
 from .csg import Csg
-from ..types import *
-from ..trans import Translate, Scale
+from ..utils.types import *
+from ..utils.trans import Translate, Scale
 
 
 class Prim(Csg):

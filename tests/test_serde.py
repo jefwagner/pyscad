@@ -23,9 +23,7 @@ import pytest
 import numpy as np
 from flint import flint
 
-from pyscad.serde import *
-from pyscad.types import *
-from pyscad.trans import *
+from pyscad.utils import *
 from pyscad.csg import *
 
 
