@@ -26,14 +26,40 @@ extern "C" {
 #endif
 
 #import <stddef.h>
+#import <stdlib.h>
 
-typedef struct _DynArray {
+typedef struct _Vec {
+    size_t data_size;
     size_t size;
     size_t num;
     void* data;
-} DynArray;
+} Vec;
 
-void* new_dyn_array(size_t element_size,)
+inline void vec_new(Vec* vec, size_t data_size) {
+    vec->data_size = data_size;
+    vec->size = 16;
+    vec->num = 0;
+    vec->data = malloc(vec->size*data_size);
+}
+
+inline int vec_push(Vec* vec, void* elem) {
+    void* new_data;
+    if (vec->size == vec->num+1) {
+        new_data = realloc(vec->data, 2*vec->size*vec->data_size);
+        if (new_data == NULL) {
+            return 1;
+        }
+        vec->size *= 2;
+        vec->data = new_data;
+    }
+    memcpy(&(vec->data[vec->num]), elem, vec->data_size);
+    vec->num += 1;
+    return 0;
+}
+
+inline int vec_pop(vec* vec, void* elem) {
+    memcpy(elem, &(vec->data[vec->num]), vec->data_size);
+}
 
 #ifdef __cplusplus
 }
