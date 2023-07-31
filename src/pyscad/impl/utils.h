@@ -28,6 +28,10 @@ extern "C" {
 #import <stddef.h>
 #import <stdlib.h>
 
+#define INITIAL_VEC_SIZE
+
+// Generalized dynamic sized vector
+
 typedef struct _Vec {
     size_t data_size;
     size_t size;
@@ -37,7 +41,7 @@ typedef struct _Vec {
 
 inline void vec_new(Vec* vec, size_t data_size) {
     vec->data_size = data_size;
-    vec->size = 16;
+    vec->size = INITIAL_VEC_SIZE;
     vec->num = 0;
     vec->data = malloc(vec->size*data_size);
 }
@@ -59,6 +63,10 @@ inline int vec_push(Vec* vec, void* elem) {
 
 inline int vec_pop(vec* vec, void* elem) {
     memcpy(elem, &(vec->data[vec->num]), vec->data_size);
+}
+
+inline void vec_free(Vec* vec) {
+    free(self->data);
 }
 
 #ifdef __cplusplus
