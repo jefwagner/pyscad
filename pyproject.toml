@@ -1,10 +1,9 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=61","oldest-supported-numpy","numpy-flint>=0.3.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyscad"
-version = "0.0.5"
 authors = [{name="Jef Wagner", email="jefwagner@gmail.com"}]
 description = "OpenSCAD like system in python"
 readme = "readme.md"
@@ -13,10 +12,14 @@ license = {text="LGPL-3.0-or-later"}
 requires-python = ">=3.7"
 dependencies = [
     "numpy>=1.17",
-    "numpy-flint"
+    "numpy-flint>=0.3.0"
 ]
+dynamic = ["version"]
 
 [tool.setuptools]
 # packages = ["pyscad"]
 license-files = ["copying*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pyscad.__version__"}
 

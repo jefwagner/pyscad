@@ -18,6 +18,11 @@ PySCAD: Python based programmers CSG modeling a-la OpenSCAD.
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-from .utils import *
-from .csg import *
-from .brep import *
+from .version import VERSION as __version__
+
+from .impl import affine
+
+# from .utils import *
+# from .csg import *
+# from .brep import *
+

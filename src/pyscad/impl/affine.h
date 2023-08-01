@@ -29,7 +29,7 @@ extern "C" {
 
 #include <flint.h>
 
-typdef enum {
+typedef enum {
     AT_GENERIC,
     AT_TRANSLATION,
     AT_ROTATION,
@@ -43,7 +43,7 @@ typdef enum {
 typedef struct {
     PyObject_HEAD
     TransformType type;
-    flint array[16];    
+    flint array[16]; 
 } PyAffineTrans;
 
 /// @brief The flint PyTypeObject

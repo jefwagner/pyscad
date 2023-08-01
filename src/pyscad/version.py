@@ -1,6 +1,5 @@
-## @file impl/__init__.py 
+## @file version.py 
 """
-Temporary implementation something or other
 """
 # Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
 #
@@ -18,3 +17,4 @@ Temporary implementation something or other
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
+VERSION = "0.0.7"

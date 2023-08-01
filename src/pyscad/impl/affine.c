@@ -53,7 +53,7 @@ static int pyaffine_init(PyObject* self, PyObject* args, PyObject* kwargs) {
 
     if ((PyTuple_Size(args) != 0) || (kwargs && PyDict_Size(kwargs))){
         PyErr_SetString(PyExc_TypeError,
-                        "AffineTrans constructor doesn't take any arguments")
+                        "AffineTrans constructor doesn't take any arguments");
         return -1;
     }
 
@@ -75,17 +75,23 @@ static PyObject* pyaffine_str(PyObject* self) {
     switch(at_self->type) {
         case AT_TRANSLATION:
             return PyUnicode_FromString("Translation");
+            break;
         case AT_ROTATION:
             return PyUnicode_FromString("Rotation");
+            break;
         case AT_SCALE:
             return PyUnicode_FromString("Scale");
+            break;
         case AT_REFLECT:
             return PyUnicode_FromString("Reflection");
+            break;
         case AT_SKEW:
             return PyUnicode_FromString("SkewTransform");
+            break;
         default:
-            return PyUnicode_FromString("AffineTransform");
+            break;
     }
+    return PyUnicode_FromString("AffineTransform");
 }
 
 /// @brief The __hash__ function create an unique-ish integer from the flint.
@@ -116,14 +122,14 @@ static PyObject* pyaffine_get_array(PyObject *self, void *NPY_UNUSED(closure)) {
     PyArray_Descr* descr = PyArray_DescrFromType(NPY_FLINT);
     int nd = 2;
     npy_intp dims[2] = {4,4};
-    PyObject* arr = PyArray_NewFromDescr(
+    PyArrayObject* arr = (PyArrayObject*) PyArray_NewFromDescr(
         &PyArray_Type, descr, nd, dims, NULL, NULL, NPY_ARRAY_CARRAY, NULL);
     if (arr == NULL) {
         PyErr_SetString(PyExc_SystemError, "Could not get create new numpy array of flints");
         return NULL;
     }
     // Copy data from transform into numpy array
-    memcpy(PyArray_DATA(arr), (void*) at_self->array, 16*sizeof(flint));
+    memcpy((void*) PyArray_DATA(arr), (void*) at_self->array, 16*sizeof(flint));
     return (PyObject*) arr;
 }
 
@@ -148,32 +154,33 @@ PyObject* pyaffine_translation(PyObject* cls, PyObject* args) {
             PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
             return NULL;
         }
-        if (pyaffine_init(at_ref, NULL, NULL) < 0) {
+        Py_INCREF(at_ref);
+        if (pyaffine_init((PyObject*) at_ref, NULL, NULL) < 0) {
+            Py_DECREF(at_ref);
             PyErr_SetString(PyExc_SystemError, "Error initializing AffineTransform");
             return NULL;
         }
-        descr = PyArray_DescrFromType(NPY_FLINT);
-        arr = PyArray_FromAny(&O, descr, 1, 1, NPY_ARRAY_CARRAY, NULL);
-        if (arr != NULL) {
-            if (PyArray_SHAPE(arr)[0] == 3) {
-                at_ref->array[3] = *((flint*) PyArray_GETPTR1(arr, 0));
-                at_ref->array[7] = *((flint*) PyArray_GETPTR1(arr, 1));
-                at_ref->array[11] = *((flint*) PyArray_GETPTR1(arr, 2));
-                at_ref->type = AT_TRANSLATION;
-                return (PyObject*) at_ref;
-            }
-            PyErr_SetString(PyExc_ValueError, "Argument must be a 3-length sequence");
-            return NULL;
-        } 
-        PyErr_SetString(PyExc_ValueError, "Argument must be a 3-length sequence");
-        return NULL;
+        return (PyObject*) at_ref;
+        // descr = PyArray_DescrFromType(NPY_FLINT);
+        // arr = (PyArrayObject*) PyArray_FromAny(&O, descr, 1, 1, NPY_ARRAY_CARRAY, NULL);
+        // if (arr != NULL) {
+        //     if (PyArray_SHAPE(arr)[0] == 3) {
+        //         at_ref->array[3] = *((flint*) PyArray_GETPTR1(arr, 0));
+        //         at_ref->array[7] = *((flint*) PyArray_GETPTR1(arr, 1));
+        //         at_ref->array[11] = *((flint*) PyArray_GETPTR1(arr, 2));
+        //         at_ref->type = AT_TRANSLATION;
+        //         return (PyObject*) at_ref;
+        //     }
+        // } 
     }
+    PyErr_SetString(PyExc_ValueError, "Argument must be a 3-length sequence");
+    return NULL;
 }
 
 /// @brief Defines the methods for Affine Transforms
-PyMethodDef pyarray_methods[] = {
+PyMethodDef pyaffine_methods[] = {
     // Pickle support functions
-    {"Translation", pyarray_translation, METH_CLASS | METH_VARARGS,
+    {"Translation", pyaffine_translation, METH_CLASS | METH_VARARGS,
     "Create a new translation transform"},
     // sentinel
     {NULL, NULL, 0, NULL}
@@ -205,7 +212,7 @@ static struct PyModuleDef moduledef = {
 };
 
 /// @brief The module initialization function
-PyMODINIT_FUNC PyInit_bar(void) {
+PyMODINIT_FUNC PyInit_affine(void) {
     PyObject* m;
     m = PyModule_Create(&moduledef);
     if (m==NULL) {

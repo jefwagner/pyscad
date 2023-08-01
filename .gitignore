@@ -6,6 +6,7 @@
 ## Package build stuff
 dist/
 **/*.egg-info
+**/*.cpython*
 
 # Allow for scratch jupyter notebooks
 **/*.ipynb
