@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-## @file setup.py Python based programmers CAD system
+## @file setup.py Python/Numpy interface for flints
 """\
-This package contains a Python based programmers CAD system in the same
-spirit as OpenSCAD.
+Standard c compilation setup file for the pyscad python c extension
 """
 # Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
 # This file is part of numpy-flint.
@@ -28,13 +27,13 @@ import flint
 setup_args = dict(
     ext_modules = [
         Extension(
-            name='pyscad.impl.affine',
-            sources=['src/pyscad/impl/affine.c'],
-            depends=[
-                'src/pyscad/impl/affine.h',
-                'src/pyscad/impl/affine.c',
+            name='pyscad.affine',
+            sources=['src/pyscad/csrc/affine.c'],
+            depends=['src/pyscad/csrc/affine.h'],
+            include_dirs=[
+                np.get_include(),
+                flint.get_include()
             ],
-            include_dirs=[np.get_include(), flint.get_include()],
         )
     ]
 )

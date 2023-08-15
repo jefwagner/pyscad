@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=61","oldest-supported-numpy","numpy-flint>=0.3.0"]
+requires = ["setuptools>=61","oldest-supported-numpy",#"numpy-flint>=0.3.0"]
+    "numpy-flint @ file:///home/jef/numpy-flint/dist/numpy_flint-0.3.1-cp310-cp310-linux_aarch64.whl",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,14 +14,20 @@ license = {text="LGPL-3.0-or-later"}
 requires-python = ">=3.7"
 dependencies = [
     "numpy>=1.17",
-    "numpy-flint>=0.3.0"
+    # "numpy-flint>=0.3.0",
+    "numpy-flint @ file:///home/jef/numpy-flint/dist/numpy_flint-0.3.1-cp310-cp310-linux_aarch64.whl",
+    "pytest"
 ]
 dynamic = ["version"]
 
 [tool.setuptools]
-# packages = ["pyscad"]
 license-files = ["copying*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "pyscad.__version__"}
 
+[tool.setuptools.packages.find]
+where=["src"]
+
+[tool.setuptools.package-data]
+"pyscad.csrc" = ["*.c", "*.h"]
