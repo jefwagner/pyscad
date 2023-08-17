@@ -103,6 +103,25 @@ static void pyaffine_set_translation(PyAffine* self, PyArrayObject* arr) {
     self->array[11] = *((flint*) PyArray_GETPTR1(arr, 2));
 }
 
+/// @brief Create a scaling matrix from [sx, sy, sz] values
+static void pyaffine_set_scale(PyAffine* self, flint* scale) {
+    int i;
+    pyaffine_eye(self);
+    for (i=0; i<3; i++) {
+        self->array[4*i+i] = scale[i];
+    }
+}
+
+/// @brief Create a scaling matrix from a [sx, sy, sz] centered on [cx, cy, cz]
+static void pyaffine_set_scale_p(PyAffine* self, flint* scale, flint* center) {
+    int i;
+    pyaffine_eye(self);
+    for (i=0; i<3; i++) {
+        self->array[4*i+i] = scale[i];
+        self->array[4*i+3] = flint_subtract(center[i], flint_multiply(scale[i], center[i]));
+    }
+}
+
 /// @brief Set the 3x3 components of the array as an x axis rotation matrix
 static void pyaffine_set_rotx(PyAffine* self, flint angle) {
     pyaffine_eye(self);
@@ -146,7 +165,7 @@ static void pyaffine_set_rotz(PyAffine* self, flint angle) {
 }
 
 /// @brief Set the 3x3 components of the array as an x axis rotation matrix
-static void pyaffine_set_rotaa(PyAffine* self, PyArrayObject* axis, flint angle) {
+static void pyaffine_set_rotaa(PyAffine* self, flint* axis, flint angle) {
     pyaffine_eye(self);
     int i;
     flint* arr = self->array;
@@ -158,7 +177,7 @@ static void pyaffine_set_rotaa(PyAffine* self, PyArrayObject* axis, flint angle)
     flint sum = int_to_flint(0);
     // Get unit vector and square length
     for (i=0; i<3; i++) {
-        u[i] = *(flint*) PyArray_GETPTR1(axis, i);
+        u[i] = axis[i];
         flint_inplace_add(&sum, flint_multiply(u[i], u[i]));
     }
     // normalize if required
@@ -209,14 +228,14 @@ static void pyaffine_set_refl_xy(PyAffine* self) {
 }
 
 /// @brief Reflection through arbitrary plane specified by unit vector through the origin
-static void pyaffine_set_refl_u(PyAffine* self, PyArrayObject* unitvec) {
+static void pyaffine_set_refl_u(PyAffine* self, flint* unitvec) {
     int i, j;
     flint a;
     flint u[3];
     flint sum = int_to_flint(0);
     // Get unit vector and square length
     for (i=0; i<3; i++) {
-        u[i] = *(flint*) PyArray_GETPTR1(unitvec, i);
+        u[i] = unitvec[i];
         flint_inplace_add(&sum, flint_multiply(u[i], u[i]));
     }
     // normalize if required
@@ -233,61 +252,6 @@ static void pyaffine_set_refl_u(PyAffine* self, PyArrayObject* unitvec) {
             a = flint_multiply(int_to_flint(2), flint_multiply(u[i], u[j]));
             flint_inplace_subtract(&(self->array[4*i+j]), a);
         }
-    }
-}
-
-/// @brief Reflection through arbitrary plane specified by unit vector through an arbitrary point
-static void pyaffine_set_refl_u_p(PyAffine* self, PyArrayObject* unitvec, PyArrayObject* point) {
-    int i, j;
-    flint a;
-    flint u[3];
-    flint sum = int_to_flint(0);
-    flint d = int_to_flint(0);
-    // Get unit vector and square length
-    for (i=0; i<3; i++) {
-        u[i] = *(flint*) PyArray_GETPTR1(unitvec, i);
-        flint_inplace_add(&sum, flint_multiply(u[i], u[i]));
-        flint_inplace_add(&d, flint_multiply(u[i], *(flint*) PyArray_GETPTR1(point, i)));
-    }
-    // normalize if required
-    if (!flint_eq(sum, int_to_flint(1))) {
-        sum = flint_sqrt(sum);
-        for (i=0; i<3; i++) {
-            flint_inplace_divide(&(u[i]), sum);
-        }
-        flint_inplace_divide(&d, sum);
-    }
-
-    // Set 3x3 component of matrix to Householder transformation I-2v.vT
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            a = flint_multiply(int_to_flint(2), flint_multiply(u[i], u[j]));
-            flint_inplace_subtract(&(self->array[4*i+j]), a);
-        }
-    }
-    // Set the translation component
-    for (i=0; i<3; i++) {
-        self->array[4*i+3] = flint_multiply(int_to_flint(2), flint_multiply(d, u[i]));
-    }
-}
-
-/// @brief Create a scaling matrix from a scalar scaling value
-static void pyaffine_set_scale_scalar(PyAffine* self, flint scale) {
-    int i;
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        self->array[4*i+i] = scale;
-    }
-}
-
-
-/// @brief Create a scaling matrix from a [sx, sy, sz] vector
-static void pyaffine_set_scale_vec(PyAffine* self, PyArrayObject* scale) {
-    int i;
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        self->array[4*i+i] = *(flint*) PyArray_GETPTR1(scale, i);
     }
 }
 
@@ -310,6 +274,20 @@ static void pyaffine_set_shear_z(PyAffine* self, flint sx, flint sy) {
     pyaffine_eye(self);
     self->array[4*0+2] = sx;
     self->array[4*1+2] = sy;
+}
+
+/// @brief Relocate the center of a linear transformation
+static void pyaffine_relocate_center(PyAffine* self, flint* c) {
+    int i, j;
+    flint b[3];
+    flint* arr = self->array;
+    for (i=0; i<3; i++) {
+        b[i] = int_to_flint(0);
+        for (j=0; j<3; j++) {
+            flint_inplace_add(&(b[i]), flint_multiply(arr[4*i+j],c[j]));
+        }
+        arr[4*i+3] = flint_subtract(c[i], b[i]);
+    }
 }
 
 /// @brief The __init__ initializing constructor
@@ -410,7 +388,7 @@ Create a new generic affine transform from a 4x4, 3x4 or 3x3 matrix\n\
 * A 3x3 matrix will only specify the linear transformation.\n\
 * A 3x4 matrix will specify the linear transformation and translation.\n\
 * A 4x4 will specify the linear transformation, translation, and perspective\n\
-transformation.\n\
+    transformation.\n\
 \n\
 :param mat: The input matrix (any properly shaped nested sequence type).\n\
 \n\
@@ -470,34 +448,37 @@ Create a new pure translation transformation.\n\
 :param center: Ignored\n\
 \n\
 :return: An pure translation AffineTransformation.";
-static PyObject* pyaffine_translation(PyObject* cls, PyObject* args) {
+static PyObject* pyaffine_translation(PyObject* cls, PyObject* args, PyObject* kwargs) {
+    static char* translation_keywords[] = {"d", "center", NULL};
     PyAffine* at_ref = NULL;
-    PyArrayObject* arr = NULL;
-    PyObject* O = NULL;
-    if (PyArg_ParseTuple(args, "O", &O)) {
-        Py_XINCREF(O);
+    PyArrayObject* d_arr = NULL;
+    PyObject* d_pyo = NULL;
+    PyObject* c_pyo = NULL;
+
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", translation_keywords, &d_pyo, &c_pyo)) {
+        Py_INCREF(d_pyo);
         at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
         if (at_ref == NULL) {
             PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
             return NULL;
         }
-        arr = (PyArrayObject*) PyArray_FROM_OT(O, NPY_FLINT);
-        if (arr != NULL) {
-            if (PyArray_NDIM(arr) == 1) {
-                if (PyArray_SHAPE(arr)[0] == 3) {
+        d_arr = (PyArrayObject*) PyArray_FROM_OT(d_pyo, NPY_FLINT);
+        if (d_arr != NULL) {
+            if (PyArray_NDIM(d_arr) == 1) {
+                if (PyArray_SHAPE(d_arr)[0] == 3) {
                     at_ref->type = AT_TRANSLATION;
                     pyaffine_eye(at_ref);
-                    pyaffine_set_translation(at_ref, arr);
-                    Py_DECREF(O);
-                    Py_DECREF(arr);
+                    pyaffine_set_translation(at_ref, d_arr);
+                    Py_DECREF(d_pyo);
+                    Py_DECREF(d_arr);
                     return (PyObject*) at_ref;
                 }
             }
         }
     }
-    PyErr_SetString(PyExc_ValueError, "Argument must be a 3-length sequence");
-    Py_XDECREF(O);
-    Py_XDECREF(arr);
+    PyErr_SetString(PyExc_ValueError, "Translation argument should be a 3 length sequence");
+    Py_XDECREF(d_pyo);
+    Py_XDECREF(d_arr);
     return NULL;
 }
 
@@ -507,64 +488,110 @@ Create a new pure scaling transformation.\n\
 \n\
 :param s: A scalar or 3-length sequence [sx, sy, sz]\n\
 :param center: Optional 3-length center position [cx, cy, cz] for the scaling\n\
-transform\n\
+    transform\n\
 \n\
 :return: A scaling if AffineTransformation.";
-static PyObject* pyaffine_scale(PyObject* cls, PyObject* args) {
-    PyAffine* at_ref = NULL;
-    PyArrayObject* arr = NULL;
-    PyObject* O = NULL;
+static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs) {
+    static char* scale_keywords[] = {"s", "center", NULL};
+    int i;
     long long n;
     double d;
+    PyAffine* at_ref = NULL;
+    // variable for scale
+    bool valid_scale = false;
+    PyObject* s_arg = NULL;
+    PyArrayObject* s_arr = NULL;
+    flint s[3] = {0};
+    // variable for center
+    bool use_center = false;
+    PyObject* c_arg = NULL;
+    PyArrayObject* c_arr = NULL;
+    flint c[3] = {0};
+    // allocate new affine transform PyObject
     at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
     if (at_ref == NULL) {
         PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
         return NULL;
     }
-    if (PyArg_ParseTuple(args, "O", &O)) {
-        Py_XINCREF(O);
+    // Parse args
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", scale_keywords, &s_arg, &c_arg)) {
         // Temporarily keeping around to remind myself how to 'print debug'
-        // printf("%s\n", Py_TYPE(O)->tp_name);
-        // printf("%d\n", PyFlint_Check(O));
+        // printf("%s\n", Py_TYPE(s_arg)->tp_name);
+        // printf("%d\n", PyFlint_Check(s_arg));
         // Check for int, double, of flint scalar
-        if (PyLong_Check(O)) {
-            n = PyLong_AsLongLong(O);
-            at_ref->type = AT_SCALE;
-            pyaffine_set_scale_scalar(at_ref, int_to_flint(n));
-            Py_DECREF(O);
-            return (PyObject*) at_ref;
+        // Parse out the scale argument
+        Py_INCREF(s_arg);
+        if (PyLong_Check(s_arg)) {
+            n = PyLong_AsLongLong(s_arg);
+            for (i=0; i<3; i++) {
+                s[i] = int_to_flint(n);
+            }
+            valid_scale = true;
         }
-        else if (PyFloat_Check(O)) {
-            d = PyFloat_AsDouble(O);
-            at_ref->type = AT_SCALE;
-            pyaffine_set_scale_scalar(at_ref, double_to_flint(d));
-            Py_DECREF(O);
-            return (PyObject*) at_ref;
+        else if (PyFloat_Check(s_arg)) {
+            d = PyFloat_AsDouble(s_arg);
+            for (i=0; i<3; i++) {
+                s[i] = double_to_flint(d);
+            }
+            valid_scale = true;
         }
-        else if (PyFlint_Check(O)) {
-            at_ref->type = AT_SCALE;
-            pyaffine_set_scale_scalar(at_ref, ((PyFlint*) O)->obval);
-            Py_DECREF(O);
-            return (PyObject*) at_ref;
+        else if (PyFlint_Check(s_arg)) {
+            for (i=0; i<3; i++) {
+                s[i] = ((PyFlint*) s_arg)->obval;
+            }
+            valid_scale = true;
         }
         else {
-            arr = (PyArrayObject*) PyArray_FROM_OT(O, NPY_FLINT);
-            if (arr != NULL) {
-                if (PyArray_NDIM(arr) == 1) {
-                    if (PyArray_SHAPE(arr)[0] == 3) {
-                        at_ref->type = AT_SCALE;
-                        pyaffine_set_scale_vec(at_ref, arr);
-                        Py_DECREF(O);
-                        Py_DECREF(arr);
-                        return (PyObject*) at_ref;
+            s_arr = (PyArrayObject*) PyArray_FROM_OT(s_arg, NPY_FLINT);
+            if (s_arr != NULL) {
+                if (PyArray_NDIM(s_arr) == 1) {
+                    if (PyArray_SHAPE(s_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            s[i] = *((flint*) PyArray_GETPTR1(s_arr, i));
+                        }
+                        valid_scale = true;
                     }
                 }
+                Py_DECREF(s_arr);
             }
         }
+        Py_DECREF(s_arg);
+        // Parse out the center argument
+        if (c_arg != NULL) {
+            Py_INCREF(c_arg);
+            c_arr = (PyArrayObject*) PyArray_FROM_OT(c_arg, NPY_FLINT);
+            if (c_arr != NULL) {
+                if (PyArray_NDIM(c_arr) == 1) {
+                    if (PyArray_SHAPE(c_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            c[i] = *((flint*) PyArray_GETPTR1(c_arr, i));
+                        }
+                        use_center = true;
+                    }
+                }
+                Py_DECREF(c_arr);
+            }
+            if (!use_center) {
+                PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
+                Py_DECREF(at_ref);
+                Py_DECREF(c_arg);
+                return NULL;
+            }
+            Py_DECREF(c_arg);
+        }
+        // Set the affine transform matrix values
+        if (valid_scale) {
+            if (use_center) {
+                pyaffine_set_scale_p(at_ref, s, c);
+            } else {
+                pyaffine_set_scale(at_ref, s);
+            }
+            at_ref->type = AT_SCALE;
+            return (PyObject*) at_ref;
+        }
     }
-    PyErr_SetString(PyExc_ValueError, "Argument must be a scalar or 3-length sequence");
-    Py_XDECREF(O);
-    Py_XDECREF(arr);
+    PyErr_SetString(PyExc_ValueError, "s must be a scalar or scalar or 3-length non-uniform scaling [sx, sy, sz]");
+    Py_DECREF(at_ref);
     return NULL;
 }
 
@@ -576,103 +603,274 @@ Create a new pure rotation transformation.\n\
 :param axis: The character 'x','y','z' or a three length vector [ax, ay, az]\n\
 :param angle: The angle in radians to rotate\n\
 :param center: Optional 3-length position [cx, cy, cz] for to specify a point\n\
-on the axix of rotation\n\
+    on the axix of rotation\n\
 \n\
 :return: A rotation AffineTransformation.";
-static PyObject* pyaffine_rotation(PyObject* cls, PyObject* args) {
+static PyObject* pyaffine_rotation(PyObject* cls, PyObject* args, PyObject* kwargs) {
+    static char* rotation_keywords[] = {"axis", "angle", "center", NULL};
+    int i;
     PyAffine* at_ref = NULL;
-    PyObject* axis_obj = NULL;
-    PyObject* angle_obj = NULL;
-    double d;
-    char c;
-    flint angle;
-    PyArrayObject* arr = NULL;
+    // axis variables
+    bool valid_a = false;
+    PyObject* a_arg = NULL;
+    char a_char = 0;
+    PyArrayObject* a_arr = NULL;
+    flint a[3];
+    // angle variable
+    bool valid_th = false;
+    PyObject* th_arg = NULL;
+    flint th;
+    // center variable
+    bool use_center = false;
+    PyObject* c_arg = NULL;
+    PyArrayObject* c_arr = NULL;
+    flint c[3];
+
     // allocate new affine transform objectc
     at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
     if (at_ref == NULL) {
         PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
         return NULL;
     }
-    // Parse two arguments
-    if (PyArg_ParseTuple(args, "OO", &axis_obj, &angle_obj)) {
-        Py_XINCREF(axis_obj);
-        Py_XINCREF(angle_obj);
-        // Get the angle
-        if (PyFloat_Check(angle_obj)) {
-            d = PyFloat_AsDouble(angle_obj);
-            angle = double_to_flint(d);            
-        }
-        else if (PyFlint_Check(angle_obj)) {
-            angle = ((PyFlint*) angle_obj)->obval;
-        }
-        // Do stuff based on axis
-        if (PyUnicode_Check(axis_obj)) {
-            if (PyUnicode_GetLength(axis_obj) == 1) {
-                c = (char) *PyUnicode_1BYTE_DATA(axis_obj);
-                if ( c == 'x' || c == 'X' ) {
-                    // x axis rotation
-                    at_ref->type = AT_ROTATION;
-                    pyaffine_set_rotx(at_ref, angle);
-                    Py_DECREF(axis_obj);
-                    Py_DECREF(angle_obj);
-                    return (PyObject*) at_ref;
-                }
-                else if (c == 'y' || c == 'Y') {
-                    // y axis
-                    at_ref->type = AT_ROTATION;
-                    pyaffine_set_roty(at_ref, angle);
-                    Py_DECREF(axis_obj);
-                    Py_DECREF(angle_obj);
-                    return (PyObject*) at_ref;
-                }
-                else if (c == 'z' || c == 'Z') {
-                    // z axis
-                    at_ref->type = AT_ROTATION;
-                    pyaffine_set_rotz(at_ref, angle);
-                    Py_DECREF(axis_obj);
-                    Py_DECREF(angle_obj);
-                    return (PyObject*) at_ref;
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "OO|$O", rotation_keywords, &a_arg, &th_arg, &c_arg)) {
+        Py_INCREF(a_arg);
+        Py_INCREF(th_arg);
+        // Get the axis argument
+        if (PyUnicode_Check(a_arg)) {
+            if (PyUnicode_GetLength(a_arg) == 1) {
+                a_char = (char) *PyUnicode_1BYTE_DATA(a_arg);
+                switch(a_char) {
+                    case 'x':
+                    case 'X': {
+                        a_char = 'x';
+                        valid_a = true;
+                        break;
+                    }
+                    case 'y':
+                    case 'Y': {
+                        a_char = 'y';
+                        valid_a = true;
+                        break;
+                    }
+                    case 'z':
+                    case 'Z': {
+                        a_char = 'z';
+                        valid_a = true;
+                        break;
+                    }
                 }
             }
-        }else{
-            arr = (PyArrayObject*) PyArray_FROM_OT(axis_obj, NPY_FLINT);
-            if (arr != NULL) {
-                if (PyArray_NDIM(arr) == 1) {
-                    if (PyArray_SHAPE(arr)[0] == 3) {
-                        // axis angle
-                        at_ref->type = AT_ROTATION;
-                        pyaffine_set_rotaa(at_ref, arr, angle);
-                        Py_DECREF(axis_obj);
-                        Py_DECREF(angle_obj);
-                        Py_DECREF(arr);
-                        return (PyObject*) at_ref;
+        } else {
+            a_arr = (PyArrayObject*) PyArray_FROM_OT(a_arg, NPY_FLINT);
+            if (a_arr != NULL) {
+                if (PyArray_NDIM(a_arr) == 1) {
+                    if (PyArray_SHAPE(a_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            a[i] = *((flint*) PyArray_GETPTR1(a_arr, i));
+                        }
+                        valid_a = true;
                     }
                 }
             }
         }
+        // Get the angle argument
+        if (PyLong_Check(th_arg)) {
+            th = int_to_flint(PyLong_AsLongLong(th_arg));
+            valid_th = true;
+        }
+        else if (PyFloat_Check(th_arg)) {
+            th = double_to_flint(PyFloat_AsDouble(th_arg));
+            valid_th = true;
+        }
+        else if (PyFlint_Check(th_arg)) {
+            th = ((PyFlint*) th_arg)->obval;
+            valid_th = true;
+        }
+        Py_DECREF(a_arg);
+        Py_DECREF(th_arg);       
+        if (c_arg != NULL) {
+            Py_INCREF(c_arg);
+            c_arr = (PyArrayObject*) PyArray_FROM_OT(c_arg, NPY_FLINT);
+            if (c_arr != NULL) {
+                if (PyArray_NDIM(c_arr) == 1) {
+                    if (PyArray_SHAPE(c_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            c[i] = *((flint*) PyArray_GETPTR1(c_arr, i));
+                        }
+                        use_center = true;
+                    }
+                }
+                Py_DECREF(c_arr);
+            }
+            if (!use_center) {
+                PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
+                Py_DECREF(at_ref);
+                Py_DECREF(c_arg);
+                return NULL;
+            }
+            Py_DECREF(c_arg);
+        }
     }
-    PyErr_SetString(PyExc_ValueError, "Arguments must be an axis ('x','y','z' or 3-length sequence) and numeric angle");
-    Py_XDECREF(axis_obj);
-    Py_XDECREF(angle_obj);
-    Py_XDECREF(arr);
-    return NULL;
+    if (!valid_a) {
+        PyErr_SetString(PyExc_ValueError, "axis must be either a single character 'x','y','z' or 3-length axis [ax, ay, az]");
+        Py_DECREF(at_ref);
+        return NULL;
+    }
+    else if (!valid_th) {
+        PyErr_SetString(PyExc_ValueError, "angle must be a numeric value");
+        Py_DECREF(at_ref);
+        return NULL;
+    }
+    at_ref->type = AT_ROTATION;
+    switch(a_char) {
+        case 0: {
+            pyaffine_set_rotaa(at_ref, a, th);
+            break;
+        }
+        case 'x': {
+            pyaffine_set_rotx(at_ref, th);
+            break;
+        }
+        case 'y': {
+            pyaffine_set_roty(at_ref, th);
+            break;
+        }
+        case 'z': {
+            pyaffine_set_rotz(at_ref, th);
+            break;
+        }
+    }
+    if (use_center) {
+        pyaffine_relocate_center(at_ref, c);
+    }
+    return (PyObject*) at_ref;
 }
 
 /// @brief Create a new pure reflection AffineTransform
-/// @param args[0] 'xy','yz','zx' or normal vec
-/// @param args[1] optional point location of the reflection plane
 static const char reflection_docstring[] = "\
 Create a new pure reflection transformation.\n\
 \n\
-:param axis: The character 'x','y','z' or a 3 length [ux, uy, uz] vector for\n\
-the normal vector for the reflection plane.\n\
+:param normal: The character 'x','y','z' or a 3 length [ux, uy, uz] vector for\n\
+    the normal vector for the reflection plane.\n\
 :param center: Optional 3-length center position [cx, cy, cz] a point on the\n\
-plane of reflection operation.\n\
+    plane of reflection operation.\n\
 \n\
 :return: A skew AffineTransformation.";
-static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args) {
-    PyErr_SetString(PyExc_ValueError, "Not implemented");
-    return NULL;
+static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args, PyObject* kwargs) {
+    static char* reflection_keywords[] = {"normal", "center", NULL};
+    int i;
+    PyAffine* at_ref = NULL;
+    // axis variables
+    bool valid_n = false;
+    PyObject* n_arg = NULL;
+    char n_char = 0;
+    PyArrayObject* n_arr = NULL;
+    flint n[3];
+    // center variable
+    bool use_center = false;
+    PyObject* c_arg = NULL;
+    PyArrayObject* c_arr = NULL;
+    flint c[3];
+
+    // allocate new affine transform objectc
+    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
+    if (at_ref == NULL) {
+        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
+        return NULL;
+    }
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", reflection_keywords, &n_arg, &c_arg)) {
+        Py_INCREF(n_arg);
+        // Get the normal vector argument
+        if (PyUnicode_Check(n_arg)) {
+            if (PyUnicode_GetLength(n_arg) == 1) {
+                n_char = (char) *PyUnicode_1BYTE_DATA(n_arg);
+                switch(n_char) {
+                    case 'x':
+                    case 'X': {
+                        n_char = 'x';
+                        valid_n = true;
+                        break;
+                    }
+                    case 'y':
+                    case 'Y': {
+                        n_char = 'y';
+                        valid_n = true;
+                        break;
+                    }
+                    case 'z':
+                    case 'Z': {
+                        n_char = 'z';
+                        valid_n = true;
+                        break;
+                    }
+                }
+            }
+        } else {
+            n_arr = (PyArrayObject*) PyArray_FROM_OT(n_arg, NPY_FLINT);
+            if (n_arr != NULL) {
+                if (PyArray_NDIM(n_arr) == 1) {
+                    if (PyArray_SHAPE(n_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            n[i] = *((flint*) PyArray_GETPTR1(n_arr, i));                            
+                        }
+                        valid_n = true;
+                    }
+                }
+            }
+        }
+        Py_DECREF(n_arg);
+        // Get the center argument
+        if (c_arg != NULL) {
+            Py_INCREF(c_arg);
+            c_arr = (PyArrayObject*) PyArray_FROM_OT(c_arg, NPY_FLINT);
+            if (c_arr != NULL) {
+                if (PyArray_NDIM(c_arr) == 1) {
+                    if (PyArray_SHAPE(c_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            c[i] = *((flint*) PyArray_GETPTR1(c_arr, i));
+                        }
+                        use_center = true;
+                    }
+                }
+                Py_DECREF(c_arr);
+            }
+            if (!use_center) {
+                PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
+                Py_DECREF(at_ref);
+                Py_DECREF(c_arg);
+                return NULL;
+            }
+            Py_DECREF(c_arg);
+        }
+    }
+    if (!valid_n) {
+        PyErr_SetString(PyExc_ValueError, "normal must be either a single character 'x','y','z' or 3-length axis [nx, ny, nz]");
+        Py_DECREF(at_ref);
+        return NULL;
+    }
+    
+    switch (n_char) {
+        case 0: {
+            pyaffine_set_refl_u(at_ref, n);
+            break;
+        }
+        case 'x': {
+            pyaffine_set_refl_yz(at_ref);
+            break;
+        }
+        case 'y': {
+            pyaffine_set_refl_zx(at_ref);
+            break;
+        }
+        case 'z': {
+            pyaffine_set_refl_xy(at_ref);
+            break;
+        }
+    }
+    if (use_center) {
+        pyaffine_relocate_center(at_ref, c);
+    }
+    return (PyObject*) at_ref;
 }
 
 /// @brief Create a new pure axis aligned skew AffineTransform
@@ -877,13 +1075,13 @@ static PyMethodDef pyaffine_methods[] = {
     // Pickle support functions
     {"from_mat", pyaffine_from_mat, METH_CLASS | METH_VARARGS,
     from_mat_docstring},
-    {"Translation", pyaffine_translation, METH_CLASS | METH_VARARGS,
+    {"Translation", pyaffine_translation, METH_CLASS | METH_VARARGS | METH_KEYWORDS,
     translation_docstring},
-    {"Scale", pyaffine_scale, METH_CLASS | METH_VARARGS,
+    {"Scale", pyaffine_scale, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
     scale_docstring},
-    {"Rotation", pyaffine_rotation, METH_CLASS | METH_VARARGS,
+    {"Rotation", pyaffine_rotation, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
     rotation_docstring},
-    {"Reflection", pyaffine_reflection, METH_CLASS | METH_VARARGS,
+    {"Reflection", pyaffine_reflection, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
     reflection_docstring},
     {"Skew", pyaffine_skew, METH_CLASS | METH_VARARGS,
     skew_docstring},

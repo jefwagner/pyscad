@@ -65,6 +65,13 @@ class TestTranslation:
         b = np.array([[1,0,0,1],[0,1,0,2],[0,0,1,3],[0,0,0,1]])
         assert np.all( a.array == b )
 
+    def test_translation(self):
+        a = AffineTransform.Translation([5,6,7], center=[0,1,3])
+        assert isinstance(a, AffineTransform)
+        assert str(a) == 'Translation'
+        b = np.array([[1,0,0,5],[0,1,0,6],[0,0,1,7],[0,0,0,1]])
+        assert np.all( a.array == b )
+
 
 class TestScale:
 
