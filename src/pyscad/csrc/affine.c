@@ -96,11 +96,12 @@ static void pyaffine_from_3x3(PyAffine* self, PyArrayObject* arr) {
 }
 
 /// @brief Set the translation components to the array
-static void pyaffine_set_translation(PyAffine* self, PyArrayObject* arr) {
+static void pyaffine_set_translation(PyAffine* self, flint* arr) {
+    int i;
     pyaffine_eye(self);
-    self->array[3] = *((flint*) PyArray_GETPTR1(arr, 0));
-    self->array[7] = *((flint*) PyArray_GETPTR1(arr, 1));
-    self->array[11] = *((flint*) PyArray_GETPTR1(arr, 2));
+    for (i=0; i<3; i++) {
+        self->array[4*i+3] = arr[i];
+    }
 }
 
 /// @brief Create a scaling matrix from [sx, sy, sz] values
@@ -255,25 +256,35 @@ static void pyaffine_set_refl_u(PyAffine* self, flint* unitvec) {
     }
 }
 
-/// @brief Create a shearing matrix that leaves x coorindates alone and moves y and z
-static void pyaffine_set_shear_x(PyAffine* self, flint sy, flint sz) {
+/// @brief Create a skew matrix with skew plane normal n, and 
+static void pyaffine_set_skew(PyAffine* self, flint* n, flint* s) {
+    int i, j;
+    flint _n[3], _s[3];
+    // Normalize n, and get s_perp (s-nhat x nhat^T.)
+    flint sum = int_to_flint(0);
+    flint dot = int_to_flint(0);
+    for (i=0; i<3; i++) {
+        _n[i] = n[i];
+        _s[i] = s[i];
+        flint_inplace_add(&sum, flint_multiply(_n[i], _n[i]));
+        flint_inplace_add(&dot, flint_multiply(_n[i], _s[i]));
+    }
+    if (!flint_eq(sum, int_to_flint(1))) {
+        sum = flint_sqrt(sum);
+        flint_inplace_divide(&dot, sum);
+        for (i=0; i<3; i++) {
+            flint_inplace_divide(&(_n[i]), sum);
+        }
+    }
+    for (i=0; i<3; i++) {
+        flint_inplace_subtract(&(_s[i]), flint_multiply(dot, _n[i]));
+    }
     pyaffine_eye(self);
-    self->array[4*1+0] = sy;
-    self->array[4*2+0] = sz;
-}
-
-/// @brief Create a shearing matrix that leaves y coorindates alone and moves x and z
-static void pyaffine_set_shear_y(PyAffine* self, flint sx, flint sz) {
-    pyaffine_eye(self);
-    self->array[4*0+1] = sx;
-    self->array[4*2+1] = sz;
-}
-
-/// @brief Create a shearing matrix that leaves z coorindates alone and moves x and y
-static void pyaffine_set_shear_z(PyAffine* self, flint sx, flint sy) {
-    pyaffine_eye(self);
-    self->array[4*0+2] = sx;
-    self->array[4*1+2] = sy;
+    for (i=0; i<3; i++) {
+        for (j=0; j<3; j++) {
+            flint_inplace_add(&(self->array[4*i+j]), flint_multiply(_s[i],_n[j]));
+        }
+    }
 }
 
 /// @brief Relocate the center of a linear transformation
@@ -450,36 +461,43 @@ Create a new pure translation transformation.\n\
 :return: An pure translation AffineTransformation.";
 static PyObject* pyaffine_translation(PyObject* cls, PyObject* args, PyObject* kwargs) {
     static char* translation_keywords[] = {"d", "center", NULL};
+    int i;
     PyAffine* at_ref = NULL;
+    PyObject* d_obj = NULL;
     PyArrayObject* d_arr = NULL;
-    PyObject* d_pyo = NULL;
-    PyObject* c_pyo = NULL;
+    flint d[3];
+    bool valid_d = false;
+    PyObject* c_obj = NULL;
 
-    if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", translation_keywords, &d_pyo, &c_pyo)) {
-        Py_INCREF(d_pyo);
-        at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
-        if (at_ref == NULL) {
-            PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-            return NULL;
-        }
-        d_arr = (PyArrayObject*) PyArray_FROM_OT(d_pyo, NPY_FLINT);
+    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
+    if (at_ref == NULL) {
+        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
+        return NULL;
+    }
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", translation_keywords, &d_obj, &c_obj)) {
+        Py_INCREF(d_obj);
+        d_arr = (PyArrayObject*) PyArray_FROM_OT(d_obj, NPY_FLINT);
         if (d_arr != NULL) {
             if (PyArray_NDIM(d_arr) == 1) {
                 if (PyArray_SHAPE(d_arr)[0] == 3) {
-                    at_ref->type = AT_TRANSLATION;
-                    pyaffine_eye(at_ref);
-                    pyaffine_set_translation(at_ref, d_arr);
-                    Py_DECREF(d_pyo);
-                    Py_DECREF(d_arr);
-                    return (PyObject*) at_ref;
+                    for (i=0; i<3; i++) {
+                        d[i] = *((flint*) PyArray_GETPTR1(d_arr, i));
+                    }
+                    valid_d = true;
                 }
             }
+            Py_DECREF(d_arr);
         }
+        Py_DECREF(d_obj);
     }
-    PyErr_SetString(PyExc_ValueError, "Translation argument should be a 3 length sequence");
-    Py_XDECREF(d_pyo);
-    Py_XDECREF(d_arr);
-    return NULL;
+    if (!valid_d) {
+        PyErr_SetString(PyExc_ValueError, "Translation argument should be a 3 length sequence");
+        Py_XDECREF(at_ref);
+        return NULL;
+    }
+    at_ref->type = AT_TRANSLATION;
+    pyaffine_set_translation(at_ref, d);
+    return (PyObject*) at_ref;
 }
 
 /// @brief Create a new pure scaling AffineTransform
@@ -579,20 +597,18 @@ static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs)
             }
             Py_DECREF(c_arg);
         }
-        // Set the affine transform matrix values
-        if (valid_scale) {
-            if (use_center) {
-                pyaffine_set_scale_p(at_ref, s, c);
-            } else {
-                pyaffine_set_scale(at_ref, s);
-            }
-            at_ref->type = AT_SCALE;
-            return (PyObject*) at_ref;
-        }
     }
-    PyErr_SetString(PyExc_ValueError, "s must be a scalar or scalar or 3-length non-uniform scaling [sx, sy, sz]");
-    Py_DECREF(at_ref);
-    return NULL;
+    if (!valid_scale) {
+        PyErr_SetString(PyExc_ValueError, "s must be a scalar or scalar or 3-length non-uniform scaling [sx, sy, sz]");
+        Py_DECREF(at_ref);
+        return NULL;
+    }
+    at_ref->type = AT_SCALE;
+    pyaffine_set_scale(at_ref, s);
+    if (use_center) {
+        pyaffine_relocate_center(at_ref, c);
+    }
+    return (PyObject*) at_ref;
 }
 
 
@@ -874,23 +890,142 @@ static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args, PyObject* kw
 }
 
 /// @brief Create a new pure axis aligned skew AffineTransform
-/// @param args[0] axis to leave unchanged 'x', 'y', 'z'
-/// @param args[1] skew of 'first' coord
-/// @param args[2] skew of 'second' coord
 static const char skew_docstring[] = "\
 Create a new pure skew transformation.\n\
 \n\
-:param uaxis: The character 'x','y','z' or a 3 length [ux, uy, uz] vector for\n\
-the unaffected axis.\n\
-:param sdir: The character 'x','y','z' or a 3 length [sx, sy, sz] vector for\n\
-the skew direction.\n\
+:param n: The character 'x','y','z' or a 3 length [nx, ny, nz] normal\n\
+    vector to define the skew (shear) plane.\n\
+:param s: A 3 length [sx, sy, sz] vector for the skew direction.\n\
 :param center: Optional 3-length center position [cx, cy, cz] for the center of\n\
-the skew operation.\n\
+    the skew operation.\n\
 \n\
 :return: A skew AffineTransformation.";
-static PyObject* pyaffine_skew(PyObject* cls, PyObject* args) {
-    PyErr_SetString(PyExc_ValueError, "Not implemented");
-    return NULL;
+static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) {
+    static char* skew_keywords[] = {"n", "s", "center", NULL};
+    int i;
+    PyAffine* at_ref = NULL;
+    // skew plane normal variables
+    bool valid_n = false;
+    PyObject* n_arg = NULL;
+    char n_char = 0;
+    PyArrayObject* n_arr = NULL;
+    flint n[3];
+    // skew direction variables
+    bool valid_s = false;
+    PyObject* s_arg = NULL;
+    PyArrayObject* s_arr = NULL;
+    flint s[3];
+    // center variable
+    bool use_center = false;
+    PyObject* c_arg = NULL;
+    PyArrayObject* c_arr = NULL;
+    flint c[3];
+
+    // allocate new affine transform objectc
+    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
+    if (at_ref == NULL) {
+        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
+        return NULL;
+    }
+    if (PyArg_ParseTupleAndKeywords(args, kwargs, "OO|$O", skew_keywords, &n_arg, &s_arg, &c_arg)) {
+        Py_INCREF(n_arg);
+        Py_INCREF(s_arg);
+        // Get the skew plane normal argument
+        if (PyUnicode_Check(n_arg)) {
+            if (PyUnicode_GetLength(n_arg) == 1) {
+                n_char = (char) *PyUnicode_1BYTE_DATA(n_arg);
+                for (i=0; i<3; i++) {
+                    n[i] = int_to_flint(0);
+                }
+                switch(n_char) {
+                    case 'x':
+                    case 'X': {
+                        n[0] = int_to_flint(1);
+                        valid_n = true;
+                        break;
+                    }
+                    case 'y':
+                    case 'Y': {
+                        n[1] = int_to_flint(1);
+                        valid_n = true;
+                        break;
+                    }
+                    case 'z':
+                    case 'Z': {
+                        n[2] = int_to_flint(1);
+                        valid_n = true;
+                        break;
+                    }
+                }
+            }
+        } else {
+            n_arr = (PyArrayObject*) PyArray_FROM_OT(n_arg, NPY_FLINT);
+            if (n_arr != NULL) {
+                if (PyArray_NDIM(n_arr) == 1) {
+                    if (PyArray_SHAPE(n_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            n[i] = *((flint*) PyArray_GETPTR1(n_arr, i));                            
+                        }
+                        valid_n = true;
+                    }
+                }
+            }
+        }
+        // Get the skew direction argument
+        s_arr = (PyArrayObject*) PyArray_FROM_OT(s_arg, NPY_FLINT);
+        if (s_arr != NULL) {
+            if (PyArray_NDIM(s_arr) == 1) {
+                if (PyArray_SHAPE(s_arr)[0] == 3) {
+                    for (i=0; i<3; i++) {
+                        s[i] = *((flint*) PyArray_GETPTR1(s_arr, i));                            
+                    }
+                    valid_s = true;
+                }
+            }
+        }
+        Py_DECREF(s_arg);
+        Py_DECREF(n_arg);
+
+        // Get the center argument
+        if (c_arg != NULL) {
+            Py_INCREF(c_arg);
+            c_arr = (PyArrayObject*) PyArray_FROM_OT(c_arg, NPY_FLINT);
+            if (c_arr != NULL) {
+                if (PyArray_NDIM(c_arr) == 1) {
+                    if (PyArray_SHAPE(c_arr)[0] == 3) {
+                        for (i=0; i<3; i++) {
+                            c[i] = *((flint*) PyArray_GETPTR1(c_arr, i));
+                        }
+                        use_center = true;
+                    }
+                }
+                Py_DECREF(c_arr);
+            }
+            if (!use_center) {
+                PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
+                Py_DECREF(at_ref);
+                Py_DECREF(c_arg);
+                return NULL;
+            }
+            Py_DECREF(c_arg);
+        }
+    }
+    if (!valid_n) {
+        PyErr_SetString(PyExc_ValueError, "skew normal must be either a single character 'x','y','z' or 3-length axis [nx, ny, nz]");
+        Py_DECREF(at_ref);
+        return NULL;
+    }
+    if (!valid_s) {
+        PyErr_SetString(PyExc_ValueError, "skew direction must be a 3-length vector [sx, sy, sz]");
+        Py_DECREF(at_ref);
+        return NULL;
+    }
+    at_ref->type = AT_SKEW;
+    pyaffine_set_skew(at_ref, n, s);
+    if (use_center) {
+        pyaffine_relocate_center(at_ref, c);
+    }
+    return (PyObject*) at_ref;
 }
 
 
@@ -1083,7 +1218,7 @@ static PyMethodDef pyaffine_methods[] = {
     rotation_docstring},
     {"Reflection", pyaffine_reflection, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
     reflection_docstring},
-    {"Skew", pyaffine_skew, METH_CLASS | METH_VARARGS,
+    {"Skew", pyaffine_skew, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
     skew_docstring},
     {"apply", pyaffine_apply, METH_VARARGS,
     "Apply the transformation to a transformation or vertex"},
