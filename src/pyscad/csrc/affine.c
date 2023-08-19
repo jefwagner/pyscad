@@ -34,6 +34,209 @@
 #define AFFINE_MODULE
 #include "affine.h"
 
+/// @brief Set the array members to the identity
+static void affine_eye(flint* self) {
+    // Creat the identity transform
+    int i;
+    for (i=0; i<16; i++) {
+        self[i] = int_to_flint(0);
+    }
+    for (i=0 ; i<16; i+=5) {
+        self[i] = int_to_flint(1);
+    }
+}
+
+/// @brief Set the translation components to the array
+static void affine_set_translation(flint* self, flint* arr) {
+    int i;
+    affine_eye(self);
+    for (i=0; i<3; i++) {
+        self[4*i+3] = arr[i];
+    }
+}
+
+/// @brief Create a scaling matrix from [sx, sy, sz] values
+static void affine_set_scale(flint* self, flint* scale) {
+    int i;
+    affine_eye(self);
+    for (i=0; i<3; i++) {
+        self[4*i+i] = scale[i];
+    }
+}
+
+/// @brief Set the 3x3 components of the array as an x axis rotation matrix
+static void affine_set_rotx(flint* self, flint angle) {
+    affine_eye(self);
+    flint zero = int_to_flint(0);
+    flint one = int_to_flint(1);
+    flint c = flint_cos(angle);
+    flint s = flint_sin(angle);
+    flint ns = flint_negative(s);
+    self[0] = one; self[1] = zero; self[2] = zero;
+    self[4] = zero; self[5] = c; self[6] = ns;
+    self[8] = zero; self[9] = s; self[10] = c;
+}
+
+/// @brief Set the 3x3 components of the array as an y axis rotation matrix
+static void affine_set_roty(flint* self, flint angle) {
+    affine_eye(self);
+    flint zero = int_to_flint(0);
+    flint one = int_to_flint(1);
+    flint c = flint_cos(angle);
+    flint s = flint_sin(angle);
+    flint ns = flint_negative(s);
+    self[0] = c; self[1] = zero; self[2] = s;
+    self[4] = zero; self[5] = one; self[6] = zero;
+    self[8] = ns; self[9] = zero; self[10] = c;
+}
+
+/// @brief Set the 3x3 components of the array as an z axis rotation matrix
+static void affine_set_rotz(flint* self, flint angle) {
+    affine_eye(self);
+    flint zero = int_to_flint(0);
+    flint one = int_to_flint(1);
+    flint c = flint_cos(angle);
+    flint s = flint_sin(angle);
+    flint ns = flint_negative(s);
+    self[0] = c; self[1] = ns; self[2] = zero;
+    self[4] = s; self[5] = c; self[6] = zero;
+    self[8] = zero; self[9] = zero; self[10] = one;
+}
+
+/// @brief Set the 3x3 components of the array as an x axis rotation matrix
+static void affine_set_rotaa(flint* self, flint* axis, flint angle) {
+    affine_eye(self);
+    int i;
+    flint one = int_to_flint(1);
+    flint c = flint_cos(angle);
+    flint omc = flint_subtract(one, c);
+    flint s = flint_sin(angle);
+    flint u[3];
+    flint sum = int_to_flint(0);
+    // Get unit vector and square length
+    for (i=0; i<3; i++) {
+        u[i] = axis[i];
+        flint_inplace_add(&sum, flint_multiply(u[i], u[i]));
+    }
+    // normalize if required
+    if (!flint_eq(sum, int_to_flint(1))) {
+        sum = flint_sqrt(sum);
+        for (i=0; i<3; i++) {
+            flint_inplace_divide(&(u[i]), sum);
+        }
+    }
+    flint a, b;
+    // diagnonal
+    self[0] = flint_add(c, flint_multiply(flint_multiply(u[0], u[0]), omc));
+    self[5] = flint_add(c, flint_multiply(flint_multiply(u[1], u[1]), omc));
+    self[10] = flint_add(c, flint_multiply(flint_multiply(u[2], u[2]), omc));
+    // off-diagonal-z special
+    a = flint_multiply(flint_multiply(u[1], u[0]), omc);
+    b = flint_multiply(u[2], s);
+    self[1] = flint_subtract(a, b);
+    self[4] = flint_add(a, b);
+    // off-diagonal-y special
+    a = flint_multiply(flint_multiply(u[0], u[2]), omc);
+    b = flint_multiply(u[1], s);
+    self[2] = flint_add(a, b);
+    self[8] = flint_subtract(a, b);
+    // off-diagonal-x special
+    a = flint_multiply(flint_multiply(u[1], u[2]), omc);
+    b = flint_multiply(u[0], s);
+    self[6] = flint_subtract(a, b);
+    self[9] = flint_add(a, b);
+}
+
+/// @brief Reflection through y-z plane
+static void affine_set_refl_yz(flint* self) {
+    affine_eye(self);
+    self[0] = int_to_flint(-1);
+}
+
+/// @brief Reflection through z-x plane
+static void affine_set_refl_zx(flint* self) {
+    affine_eye(self);
+    self[5] = int_to_flint(-1);
+}
+
+/// @brief Reflection through x-y plane
+static void affine_set_refl_xy(flint* self) {
+    affine_eye(self);
+    self[10] = int_to_flint(-1);
+}
+
+/// @brief Reflection through arbitrary plane specified by unit vector through the origin
+static void affine_set_refl_u(flint* self, flint* unitvec) {
+    int i, j;
+    flint a;
+    flint u[3];
+    flint sum = int_to_flint(0);
+    // Get unit vector and square length
+    for (i=0; i<3; i++) {
+        u[i] = unitvec[i];
+        flint_inplace_add(&sum, flint_multiply(u[i], u[i]));
+    }
+    // normalize if required
+    if (!flint_eq(sum, int_to_flint(1))) {
+        sum = flint_sqrt(sum);
+        for (i=0; i<3; i++) {
+            flint_inplace_divide(&(u[i]), sum);
+        }
+    }
+    // Set 3x3 component of matrix to Householder transformation I-2v.vT
+    affine_eye(self);
+    for (i=0; i<3; i++) {
+        for (j=0; j<3; j++) {
+            a = flint_multiply(int_to_flint(2), flint_multiply(u[i], u[j]));
+            flint_inplace_subtract(&(self[4*i+j]), a);
+        }
+    }
+}
+
+/// @brief Create a skew matrix with skew plane normal n, and 
+static void affine_set_skew(flint* self, flint* n, flint* s) {
+    int i, j;
+    flint _n[3], _s[3];
+    // Normalize n, and get s_perp (s-nhat x nhat^T.)
+    flint sum = int_to_flint(0);
+    flint dot = int_to_flint(0);
+    for (i=0; i<3; i++) {
+        _n[i] = n[i];
+        _s[i] = s[i];
+        flint_inplace_add(&sum, flint_multiply(_n[i], _n[i]));
+        flint_inplace_add(&dot, flint_multiply(_n[i], _s[i]));
+    }
+    if (!flint_eq(sum, int_to_flint(1))) {
+        sum = flint_sqrt(sum);
+        flint_inplace_divide(&dot, sum);
+        for (i=0; i<3; i++) {
+            flint_inplace_divide(&(_n[i]), sum);
+        }
+    }
+    for (i=0; i<3; i++) {
+        flint_inplace_subtract(&(_s[i]), flint_multiply(dot, _n[i]));
+    }
+    affine_eye(self);
+    for (i=0; i<3; i++) {
+        for (j=0; j<3; j++) {
+            flint_inplace_add(&(self[4*i+j]), flint_multiply(_s[i],_n[j]));
+        }
+    }
+}
+
+/// @brief Relocate the center of a linear transformation
+static void affine_relocate_center(flint* self, flint* c) {
+    int i, j;
+    flint b[3];
+    for (i=0; i<3; i++) {
+        b[i] = int_to_flint(0);
+        for (j=0; j<3; j++) {
+            flint_inplace_add(&(b[i]), flint_multiply(self[4*i+j],c[j]));
+        }
+        self[4*i+3] = flint_subtract(c[i], b[i]);
+    }
+}
+
 /// @brief The __new__ allocating constructor
 /// @param type The type of the PyObject
 /// @return A new PyObject of type `type`
@@ -42,18 +245,6 @@ static PyObject* pyaffine_new(PyTypeObject* type,
                               PyObject* NPY_UNUSED(kwargs)) {
     PyAffine* self = (PyAffine*) type->tp_alloc(type, 0);
     return (PyObject*) self;
-}
-
-/// @brief Set the array members to the identity
-static void pyaffine_eye(PyAffine* self) {
-    // Creat the identity transform
-    int i;
-    for (i=0; i<16; i++) {
-        self->array[i] = int_to_flint(0);
-    }
-    for (i=0 ; i<16; i+=5) {
-        self->array[i] = int_to_flint(1);
-    }
 }
 
 /// @brief Set the array members from a 4x4 array
@@ -95,212 +286,6 @@ static void pyaffine_from_3x3(PyAffine* self, PyArrayObject* arr) {
     self->array[15] = int_to_flint(1);
 }
 
-/// @brief Set the translation components to the array
-static void pyaffine_set_translation(PyAffine* self, flint* arr) {
-    int i;
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        self->array[4*i+3] = arr[i];
-    }
-}
-
-/// @brief Create a scaling matrix from [sx, sy, sz] values
-static void pyaffine_set_scale(PyAffine* self, flint* scale) {
-    int i;
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        self->array[4*i+i] = scale[i];
-    }
-}
-
-/// @brief Create a scaling matrix from a [sx, sy, sz] centered on [cx, cy, cz]
-static void pyaffine_set_scale_p(PyAffine* self, flint* scale, flint* center) {
-    int i;
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        self->array[4*i+i] = scale[i];
-        self->array[4*i+3] = flint_subtract(center[i], flint_multiply(scale[i], center[i]));
-    }
-}
-
-/// @brief Set the 3x3 components of the array as an x axis rotation matrix
-static void pyaffine_set_rotx(PyAffine* self, flint angle) {
-    pyaffine_eye(self);
-    flint* arr = self->array;
-    flint zero = int_to_flint(0);
-    flint one = int_to_flint(1);
-    flint c = flint_cos(angle);
-    flint s = flint_sin(angle);
-    flint ns = flint_negative(s);
-    arr[0] = one; arr[1] = zero; arr[2] = zero;
-    arr[4] = zero; arr[5] = c; arr[6] = ns;
-    arr[8] = zero; arr[9] = s; arr[10] = c;
-}
-
-/// @brief Set the 3x3 components of the array as an y axis rotation matrix
-static void pyaffine_set_roty(PyAffine* self, flint angle) {
-    pyaffine_eye(self);
-    flint* arr = self->array;
-    flint zero = int_to_flint(0);
-    flint one = int_to_flint(1);
-    flint c = flint_cos(angle);
-    flint s = flint_sin(angle);
-    flint ns = flint_negative(s);
-    arr[0] = c; arr[1] = zero; arr[2] = s;
-    arr[4] = zero; arr[5] = one; arr[6] = zero;
-    arr[8] = ns; arr[9] = zero; arr[10] = c;
-}
-
-/// @brief Set the 3x3 components of the array as an z axis rotation matrix
-static void pyaffine_set_rotz(PyAffine* self, flint angle) {
-    pyaffine_eye(self);
-    flint* arr = self->array;
-    flint zero = int_to_flint(0);
-    flint one = int_to_flint(1);
-    flint c = flint_cos(angle);
-    flint s = flint_sin(angle);
-    flint ns = flint_negative(s);
-    arr[0] = c; arr[1] = ns; arr[2] = zero;
-    arr[4] = s; arr[5] = c; arr[6] = zero;
-    arr[8] = zero; arr[9] = zero; arr[10] = one;
-}
-
-/// @brief Set the 3x3 components of the array as an x axis rotation matrix
-static void pyaffine_set_rotaa(PyAffine* self, flint* axis, flint angle) {
-    pyaffine_eye(self);
-    int i;
-    flint* arr = self->array;
-    flint one = int_to_flint(1);
-    flint c = flint_cos(angle);
-    flint omc = flint_subtract(one, c);
-    flint s = flint_sin(angle);
-    flint u[3];
-    flint sum = int_to_flint(0);
-    // Get unit vector and square length
-    for (i=0; i<3; i++) {
-        u[i] = axis[i];
-        flint_inplace_add(&sum, flint_multiply(u[i], u[i]));
-    }
-    // normalize if required
-    if (!flint_eq(sum, int_to_flint(1))) {
-        sum = flint_sqrt(sum);
-        for (i=0; i<3; i++) {
-            flint_inplace_divide(&(u[i]), sum);
-        }
-    }
-    flint a, b;
-    // diagnonal
-    arr[0] = flint_add(c, flint_multiply(flint_multiply(u[0], u[0]), omc));
-    arr[5] = flint_add(c, flint_multiply(flint_multiply(u[1], u[1]), omc));
-    arr[10] = flint_add(c, flint_multiply(flint_multiply(u[2], u[2]), omc));
-    // off-diagonal-z special
-    a = flint_multiply(flint_multiply(u[1], u[0]), omc);
-    b = flint_multiply(u[2], s);
-    arr[1] = flint_subtract(a, b);
-    arr[4] = flint_add(a, b);
-    // off-diagonal-y special
-    a = flint_multiply(flint_multiply(u[0], u[2]), omc);
-    b = flint_multiply(u[1], s);
-    arr[2] = flint_add(a, b);
-    arr[8] = flint_subtract(a, b);
-    // off-diagonal-x special
-    a = flint_multiply(flint_multiply(u[1], u[2]), omc);
-    b = flint_multiply(u[0], s);
-    arr[6] = flint_subtract(a, b);
-    arr[9] = flint_add(a, b);
-}
-
-/// @brief Reflection through y-z plane
-static void pyaffine_set_refl_yz(PyAffine* self) {
-    pyaffine_eye(self);
-    self->array[0] = int_to_flint(-1);
-}
-
-/// @brief Reflection through z-x plane
-static void pyaffine_set_refl_zx(PyAffine* self) {
-    pyaffine_eye(self);
-    self->array[5] = int_to_flint(-1);
-}
-
-/// @brief Reflection through x-y plane
-static void pyaffine_set_refl_xy(PyAffine* self) {
-    pyaffine_eye(self);
-    self->array[10] = int_to_flint(-1);
-}
-
-/// @brief Reflection through arbitrary plane specified by unit vector through the origin
-static void pyaffine_set_refl_u(PyAffine* self, flint* unitvec) {
-    int i, j;
-    flint a;
-    flint u[3];
-    flint sum = int_to_flint(0);
-    // Get unit vector and square length
-    for (i=0; i<3; i++) {
-        u[i] = unitvec[i];
-        flint_inplace_add(&sum, flint_multiply(u[i], u[i]));
-    }
-    // normalize if required
-    if (!flint_eq(sum, int_to_flint(1))) {
-        sum = flint_sqrt(sum);
-        for (i=0; i<3; i++) {
-            flint_inplace_divide(&(u[i]), sum);
-        }
-    }
-    // Set 3x3 component of matrix to Householder transformation I-2v.vT
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            a = flint_multiply(int_to_flint(2), flint_multiply(u[i], u[j]));
-            flint_inplace_subtract(&(self->array[4*i+j]), a);
-        }
-    }
-}
-
-/// @brief Create a skew matrix with skew plane normal n, and 
-static void pyaffine_set_skew(PyAffine* self, flint* n, flint* s) {
-    int i, j;
-    flint _n[3], _s[3];
-    // Normalize n, and get s_perp (s-nhat x nhat^T.)
-    flint sum = int_to_flint(0);
-    flint dot = int_to_flint(0);
-    for (i=0; i<3; i++) {
-        _n[i] = n[i];
-        _s[i] = s[i];
-        flint_inplace_add(&sum, flint_multiply(_n[i], _n[i]));
-        flint_inplace_add(&dot, flint_multiply(_n[i], _s[i]));
-    }
-    if (!flint_eq(sum, int_to_flint(1))) {
-        sum = flint_sqrt(sum);
-        flint_inplace_divide(&dot, sum);
-        for (i=0; i<3; i++) {
-            flint_inplace_divide(&(_n[i]), sum);
-        }
-    }
-    for (i=0; i<3; i++) {
-        flint_inplace_subtract(&(_s[i]), flint_multiply(dot, _n[i]));
-    }
-    pyaffine_eye(self);
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            flint_inplace_add(&(self->array[4*i+j]), flint_multiply(_s[i],_n[j]));
-        }
-    }
-}
-
-/// @brief Relocate the center of a linear transformation
-static void pyaffine_relocate_center(PyAffine* self, flint* c) {
-    int i, j;
-    flint b[3];
-    flint* arr = self->array;
-    for (i=0; i<3; i++) {
-        b[i] = int_to_flint(0);
-        for (j=0; j<3; j++) {
-            flint_inplace_add(&(b[i]), flint_multiply(arr[4*i+j],c[j]));
-        }
-        arr[4*i+3] = flint_subtract(c[i], b[i]);
-    }
-}
-
 /// @brief The __init__ initializing constructor
 /// @param self The object to be initialized
 /// @param args Unused positional argument tuple
@@ -314,7 +299,7 @@ static int pyaffine_init(PyObject* self, PyObject* args, PyObject* kwargs) {
                         "AffineTrans constructor doesn't take any arguments");
         return -1;
     }
-    pyaffine_eye(at_self);
+    affine_eye(at_self->array);
     return 0;
 }
 
@@ -496,7 +481,7 @@ static PyObject* pyaffine_translation(PyObject* cls, PyObject* args, PyObject* k
         return NULL;
     }
     at_ref->type = AT_TRANSLATION;
-    pyaffine_set_translation(at_ref, d);
+    affine_set_translation(at_ref->array, d);
     return (PyObject*) at_ref;
 }
 
@@ -604,9 +589,9 @@ static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs)
         return NULL;
     }
     at_ref->type = AT_SCALE;
-    pyaffine_set_scale(at_ref, s);
+    affine_set_scale(at_ref->array, s);
     if (use_center) {
-        pyaffine_relocate_center(at_ref, c);
+        affine_relocate_center(at_ref->array, c);
     }
     return (PyObject*) at_ref;
 }
@@ -740,24 +725,24 @@ static PyObject* pyaffine_rotation(PyObject* cls, PyObject* args, PyObject* kwar
     at_ref->type = AT_ROTATION;
     switch(a_char) {
         case 0: {
-            pyaffine_set_rotaa(at_ref, a, th);
+            affine_set_rotaa(at_ref->array, a, th);
             break;
         }
         case 'x': {
-            pyaffine_set_rotx(at_ref, th);
+            affine_set_rotx(at_ref->array, th);
             break;
         }
         case 'y': {
-            pyaffine_set_roty(at_ref, th);
+            affine_set_roty(at_ref->array, th);
             break;
         }
         case 'z': {
-            pyaffine_set_rotz(at_ref, th);
+            affine_set_rotz(at_ref->array, th);
             break;
         }
     }
     if (use_center) {
-        pyaffine_relocate_center(at_ref, c);
+        affine_relocate_center(at_ref->array, c);
     }
     return (PyObject*) at_ref;
 }
@@ -867,24 +852,24 @@ static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args, PyObject* kw
     
     switch (n_char) {
         case 0: {
-            pyaffine_set_refl_u(at_ref, n);
+            affine_set_refl_u(at_ref->array, n);
             break;
         }
         case 'x': {
-            pyaffine_set_refl_yz(at_ref);
+            affine_set_refl_yz(at_ref->array);
             break;
         }
         case 'y': {
-            pyaffine_set_refl_zx(at_ref);
+            affine_set_refl_zx(at_ref->array);
             break;
         }
         case 'z': {
-            pyaffine_set_refl_xy(at_ref);
+            affine_set_refl_xy(at_ref->array);
             break;
         }
     }
     if (use_center) {
-        pyaffine_relocate_center(at_ref, c);
+        affine_relocate_center(at_ref->array, c);
     }
     return (PyObject*) at_ref;
 }
@@ -1021,9 +1006,9 @@ static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) 
         return NULL;
     }
     at_ref->type = AT_SKEW;
-    pyaffine_set_skew(at_ref, n, s);
+    affine_set_skew(at_ref->array, n, s);
     if (use_center) {
-        pyaffine_relocate_center(at_ref, c);
+        affine_relocate_center(at_ref->array, c);
     }
     return (PyObject*) at_ref;
 }
