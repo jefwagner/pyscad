@@ -1,4 +1,4 @@
-/// @file affine.h Affine transforms
+/// @file affine.h 
 //
 // Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
 //
@@ -25,51 +25,114 @@
 extern "C" {
 #endif
 
-#include <Python.h>
-
-#include <flint.h>
-
-typedef enum {
-    AT_GENERIC,
-    AT_TRANSLATION,
-    AT_ROTATION,
-    AT_SCALE,
-    AT_REFLECTION,
-    AT_SKEW,
-} TransformType;
-
-/// @brief An affine transform
-/// @param array The 4x4 array of c flint objects
-typedef struct {
-    PyObject_HEAD
-    TransformType type;
-    flint array[16]; 
-} PyAffine;
-
-/// @brief The flint PyTypeObject
-static PyTypeObject PyAffine_Type;
-
-//------------------------------------------------------------
-// Original module includes
-//------------------------------------------------------------
-#ifdef PYSCAD_AFFINE_MODULE
-
-
-//------------------------------------------------------------
-// Capsule API includes
-//------------------------------------------------------------
-#else // PYSCAD_AFFINE MODULE
-
-
-#endif //PYSCAD_AFFINE_MODULE
-
-/// @brief Check if an object is an affine transform
-/// @param ob The PyObject to check
-/// @return 1 if the object is an affine transform, 0 otherwise
-static inline int PyAffine_Check(PyObject* ob) {
-    return PyObject_IsInstance(ob, (PyObject*) &PyAffine_Type);
+/// @brief Set the array members to the identity
+static inline void affine_eye(flint* self) {
+    // Creat the identity transform
+    int i;
+    for (i=0; i<16; i++) {
+        self[i] = int_to_flint(0);
+    }
+    for (i=0 ; i<16; i+=5) {
+        self[i] = int_to_flint(1);
+    }
 }
 
+/// @brief Set the translation components to the array
+static inline void affine_set_translation(flint* self, flint* arr) {
+    int i;
+    affine_eye(self);
+    for (i=0; i<3; i++) {
+        self[4*i+3] = arr[i];
+    }
+}
+
+/// @brief Create a scaling matrix from [sx, sy, sz] values
+static inline void affine_set_scale(flint* self, flint* scale) {
+    int i;
+    affine_eye(self);
+    for (i=0; i<3; i++) {
+        self[4*i+i] = scale[i];
+    }
+}
+
+/// @brief Set the 3x3 components of the array as an x axis rotation matrix
+static inline void affine_set_rotx(flint* self, flint angle) {
+    affine_eye(self);
+    flint zero = int_to_flint(0);
+    flint one = int_to_flint(1);
+    flint c = flint_cos(angle);
+    flint s = flint_sin(angle);
+    flint ns = flint_negative(s);
+    self[0] = one; self[1] = zero; self[2] = zero;
+    self[4] = zero; self[5] = c; self[6] = ns;
+    self[8] = zero; self[9] = s; self[10] = c;
+}
+
+/// @brief Set the 3x3 components of the array as an y axis rotation matrix
+static inline void affine_set_roty(flint* self, flint angle) {
+    affine_eye(self);
+    flint zero = int_to_flint(0);
+    flint one = int_to_flint(1);
+    flint c = flint_cos(angle);
+    flint s = flint_sin(angle);
+    flint ns = flint_negative(s);
+    self[0] = c; self[1] = zero; self[2] = s;
+    self[4] = zero; self[5] = one; self[6] = zero;
+    self[8] = ns; self[9] = zero; self[10] = c;
+}
+
+/// @brief Set the 3x3 components of the array as an z axis rotation matrix
+static inline void affine_set_rotz(flint* self, flint angle) {
+    affine_eye(self);
+    flint zero = int_to_flint(0);
+    flint one = int_to_flint(1);
+    flint c = flint_cos(angle);
+    flint s = flint_sin(angle);
+    flint ns = flint_negative(s);
+    self[0] = c; self[1] = ns; self[2] = zero;
+    self[4] = s; self[5] = c; self[6] = zero;
+    self[8] = zero; self[9] = zero; self[10] = one;
+}
+
+/// @brief Set the 3x3 components of the array as an x axis rotation matrix
+void affine_set_rotaa(flint* self, flint* axis, flint angle);
+
+/// @brief Reflection through y-z plane
+static inline void affine_set_refl_yz(flint* self) {
+    affine_eye(self);
+    self[0] = int_to_flint(-1);
+}
+
+/// @brief Reflection through z-x plane
+static inline void affine_set_refl_zx(flint* self) {
+    affine_eye(self);
+    self[5] = int_to_flint(-1);
+}
+
+/// @brief Reflection through x-y plane
+static inline void affine_set_refl_xy(flint* self) {
+    affine_eye(self);
+    self[10] = int_to_flint(-1);
+}
+
+/// @brief Reflection through arbitrary plane specified by unit vector through the origin
+void affine_set_refl_u(flint* self, flint* unitvec);
+
+/// @brief Create a skew matrix with skew plane normal n, and 
+void affine_set_skew(flint* self, flint* n, flint* s);
+
+/// @brief Relocate the center of a linear transformation
+static inline void affine_relocate_center(flint* self, flint* c) {
+    int i, j;
+    flint b[3];
+    for (i=0; i<3; i++) {
+        b[i] = int_to_flint(0);
+        for (j=0; j<3; j++) {
+            flint_inplace_add(&(b[i]), flint_multiply(self[4*i+j],c[j]));
+        }
+        self[4*i+3] = flint_subtract(c[i], b[i]);
+    }
+}
 
 #ifdef __cplusplus
 }

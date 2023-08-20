@@ -28,8 +28,8 @@ setup_args = dict(
     ext_modules = [
         Extension(
             name='pyscad.affine',
-            sources=['src/pyscad/csrc/affine.c'],
-            depends=['src/pyscad/csrc/affine.h'],
+            sources=['src/pyscad/csrc/affine.c','src/pyscad/csrc/pyaffine.c'],
+            depends=['src/pyscad/csrc/affine.h','src/pyscad/csrc/pyaffine.h'],
             include_dirs=[
                 np.get_include(),
                 flint.get_include()
