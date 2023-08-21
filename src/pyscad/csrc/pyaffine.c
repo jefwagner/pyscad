@@ -45,45 +45,6 @@ static PyObject* pyaffine_new(PyTypeObject* type,
     return (PyObject*) self;
 }
 
-/// @brief Set the array members from a 4x4 array
-static void pyaffine_from_4x4(PyAffine* self, PyArrayObject* arr) {
-    int i, j;
-    for (i=0; i<4; i++) {
-        for (j=0; j<4; j++) {
-            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
-        }
-    }
-}
-
-/// @brief Set the array members from a 4x3 array
-static void pyaffine_from_3x4(PyAffine* self, PyArrayObject* arr) {
-    int i, j;
-    for (i=0; i<3; i++) {
-        for (j=0; j<4; j++) {
-            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
-        }
-    }
-    for(j=0; j<3; j++) {
-        self->array[12+j] = int_to_flint(0);
-    }
-    self->array[15] = int_to_flint(1);
-}
-
-/// @brief Set the array members from a 3x3 array
-static void pyaffine_from_3x3(PyAffine* self, PyArrayObject* arr) {
-    int i, j;
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
-        }
-        self->array[4*i+3] = int_to_flint(0);
-    }
-    for(j=0; j<3; j++) {
-        self->array[12+j] = int_to_flint(0);
-    }
-    self->array[15] = int_to_flint(1);
-}
-
 /// @brief The __init__ initializing constructor
 /// @param self The object to be initialized
 /// @param args Unused positional argument tuple
@@ -174,6 +135,45 @@ static PyGetSetDef pyaffine_getset[] = {
     //sentinal
     {NULL, NULL, NULL, NULL, NULL}
 };
+
+/// @brief Set the array members from a 4x4 array
+static void pyaffine_from_4x4(PyAffine* self, PyArrayObject* arr) {
+    int i, j;
+    for (i=0; i<4; i++) {
+        for (j=0; j<4; j++) {
+            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
+        }
+    }
+}
+
+/// @brief Set the array members from a 4x3 array
+static void pyaffine_from_3x4(PyAffine* self, PyArrayObject* arr) {
+    int i, j;
+    for (i=0; i<3; i++) {
+        for (j=0; j<4; j++) {
+            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
+        }
+    }
+    for(j=0; j<3; j++) {
+        self->array[12+j] = int_to_flint(0);
+    }
+    self->array[15] = int_to_flint(1);
+}
+
+/// @brief Set the array members from a 3x3 array
+static void pyaffine_from_3x3(PyAffine* self, PyArrayObject* arr) {
+    int i, j;
+    for (i=0; i<3; i++) {
+        for (j=0; j<3; j++) {
+            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
+        }
+        self->array[4*i+3] = int_to_flint(0);
+    }
+    for(j=0; j<3; j++) {
+        self->array[12+j] = int_to_flint(0);
+    }
+    self->array[15] = int_to_flint(1);
+}
 
 /// @brief Classmethod for making an AffineTransform from a matrix
 static const char from_mat_docstring[] ="\
@@ -393,7 +393,6 @@ static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs)
     }
     return (PyObject*) at_ref;
 }
-
 
 /// @brief Create a new pure rotation AffineTransform
 static const char rotation_docstring[] = "\
@@ -811,181 +810,355 @@ static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) 
     return (PyObject*) at_ref;
 }
 
+// /// @brief Combine two affine transforms through matrix multiplication
+// /// @param O_lhs The left hand side affine transform object
+// /// @param O_rhs The right hand side affine transform object
+// /// @return A new affine transform object combining the two inputs
+// static PyObject* pyaffine_apply_transform(PyObject* O_lhs, PyObject* O_rhs) {
+//     int i, j, k;
+//     flint *res;
+//     flint* lhs = ((PyAffine*) O_lhs)->array;
+//     flint* rhs = ((PyAffine*) O_rhs)->array;
+//     PyAffine* result = (PyAffine*) pyaffine_new(&PyAffine_Type, NULL, NULL);
+//     if (result == NULL) {
+//         PyErr_SetString(PyExc_SystemError, "Error allocating result AffineTransform");
+//         return NULL;
+//     }
+//     result->type = AT_GENERIC;
+//     res = result->array;
+//     for (i=0; i<4; i++) {
+//         for (j=0; j<4; j++) {
+//             res[4*i+j] = int_to_flint(0);
+//             for (k=0; k<4; k++) {
+//                 flint_inplace_add(&(res[4*i+j]), flint_multiply(lhs[4*i+k], rhs[4*k+j]));
+//             }
+//         }
+//     }
+//     return (PyObject*) result;
+// }
 
-/// @brief Combine two affine transforms through matrix multiplication
-/// @param O_lhs The left hand side affine transform object
-/// @param O_rhs The right hand side affine transform object
-/// @return A new affine transform object combining the two inputs
-static PyObject* pyaffine_apply_transform(PyObject* O_lhs, PyObject* O_rhs) {
-    int i, j, k;
-    flint *res;
-    flint* lhs = ((PyAffine*) O_lhs)->array;
-    flint* rhs = ((PyAffine*) O_rhs)->array;
-    PyAffine* result = (PyAffine*) pyaffine_new(&PyAffine_Type, NULL, NULL);
-    if (result == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Error allocating result AffineTransform");
-        return NULL;
-    }
-    result->type = AT_GENERIC;
-    res = result->array;
-    for (i=0; i<4; i++) {
-        for (j=0; j<4; j++) {
-            res[4*i+j] = int_to_flint(0);
-            for (k=0; k<4; k++) {
-                flint_inplace_add(&(res[4*i+j]), flint_multiply(lhs[4*i+k], rhs[4*k+j]));
-            }
-        }
-    }
-    return (PyObject*) result;
-}
+// /// @brief Apply the affine transformation to a 3xN? numpy array of flints
+// /// This 
+// static PyObject* pyaffine_apply_vertices(PyObject* trans, PyArrayObject* in_arr) {
+//     /// Affine transform 4x4 matrix
+//     flint* trans_data = ((PyAffine*) trans)->array;
+//     /// Input array variables
+//     int ndim = PyArray_NDIM(in_arr);
+//     npy_intp* shape = PyArray_SHAPE(in_arr);
+//     /// Outer loop variables
+//     int i;
+//     int num_verts = 1;
+//     npy_intp outer_stride = PyArray_STRIDE(in_arr, 0)/sizeof(flint);
+//     // Inner loop variables
+//     int j, k;
+//     npy_intp inner_stride = PyArray_STRIDE(in_arr, ndim-1)/sizeof(flint);
+//     flint homo[4];
+//     flint one = int_to_flint(1);
+//     // working data arrays and new object
+//     flint* in_data = (flint*) PyArray_DATA(in_arr);
+//     flint* res_data;
+//     PyArrayObject* result = (PyArrayObject*) PyArray_NewLikeArray(in_arr, NPY_KEEPORDER, NULL, 0);
+//     if (result == NULL) {
+//         PyErr_SetString(PyExc_SystemError, "Could not create output array");
+//         return NULL;
+//     }
+//     res_data = (flint*) PyArray_DATA(result);
+//     // Get the number of vertices we're operating on
+//     for (i=1; i<ndim; i++) {
+//         num_verts *= shape[i];
+//     }
+//     // Loop over the vertices
+//     for (i=1; i<num_verts; i++) {
+//         // Do the matrix-vector multiplication
+//         for (j=0; j<4; j++) {
+//             homo[j] = int_to_flint(0);
+//             for (k=0; k<3; k++) {
+//                 flint_inplace_add(&(homo[j]), flint_multiply(trans_data[4*j+k], in_data[k*outer_stride+i*inner_stride]));
+//             }
+//             flint_inplace_add(&(homo[j]), trans_data[4*j+3]);
+//         }
+//         // Possibly rescale homogenous coordinates
+//         if (!flint_eq(homo[3], one)) {
+//             for (j=0; j<3; j++) {
+//                 flint_inplace_divide(&(homo[j]), homo[3]);
+//             }
+//         }
+//         // Copy data to output
+//         for (j=0; j<3; j++) {
+//             res_data[j*outer_stride+i*inner_stride] = homo[j];
+//         }        
+//     }
 
-/// @brief Apply the affine transformation to a 3xN? numpy array of flints
-/// This 
-static PyObject* pyaffine_apply_vertices(PyObject* trans, PyArrayObject* in_arr) {
-    /// Affine transform 4x4 matrix
-    flint* trans_data = ((PyAffine*) trans)->array;
-    /// Input array variables
-    int ndim = PyArray_NDIM(in_arr);
-    npy_intp* shape = PyArray_SHAPE(in_arr);
-    /// Outer loop variables
-    int i;
-    int num_verts = 1;
-    npy_intp outer_stride = PyArray_STRIDE(in_arr, 0)/sizeof(flint);
-    // Inner loop variables
-    int j, k;
-    npy_intp inner_stride = PyArray_STRIDE(in_arr, ndim-1)/sizeof(flint);
-    flint homo[4];
-    flint one = int_to_flint(1);
-    // working data arrays and new object
-    flint* in_data = (flint*) PyArray_DATA(in_arr);
-    flint* res_data;
-    PyArrayObject* result = (PyArrayObject*) PyArray_NewLikeArray(in_arr, NPY_KEEPORDER, NULL, 0);
-    if (result == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Could not create output array");
-        return NULL;
-    }
-    res_data = (flint*) PyArray_DATA(result);
-    // Get the number of vertices we're operating on
-    for (i=1; i<ndim; i++) {
-        num_verts *= shape[i];
-    }
-    // Loop over the vertices
-    for (i=1; i<num_verts; i++) {
-        // Do the matrix-vector multiplication
-        for (j=0; j<4; j++) {
-            homo[j] = int_to_flint(0);
-            for (k=0; k<3; k++) {
-                flint_inplace_add(&(homo[j]), flint_multiply(trans_data[4*j+k], in_data[k*outer_stride+i*inner_stride]));
-            }
-            flint_inplace_add(&(homo[j]), trans_data[4*j+3]);
-        }
-        // Possibly rescale homogenous coordinates
-        if (!flint_eq(homo[3], one)) {
-            for (j=0; j<3; j++) {
-                flint_inplace_divide(&(homo[j]), homo[3]);
-            }
-        }
-        // Copy data to output
-        for (j=0; j<3; j++) {
-            res_data[j*outer_stride+i*inner_stride] = homo[j];
-        }        
-    }
+//     return (PyObject*) result;
+// }
 
-    return (PyObject*) result;
-}
+// /// @brief Apply the affine transformation to a 4xN? numpy array of flints
+// static PyObject* pyaffine_apply_homogenous(PyObject* trans, PyArrayObject* in_arr) {
+//     /// Affine transform 4x4 matrix
+//     flint* trans_data = ((PyAffine*) trans)->array;
+//     /// Input array variables
+//     int ndim = PyArray_NDIM(in_arr);
+//     npy_intp* shape = PyArray_SHAPE(in_arr);
+//     /// Outer loop variables
+//     int i;
+//     int num_verts = 1;
+//     npy_intp outer_stride = PyArray_STRIDE(in_arr, 0)/sizeof(flint);
+//     // Inner loop variables
+//     int j, k;
+//     npy_intp inner_stride = PyArray_STRIDE(in_arr, ndim-1)/sizeof(flint);
+//     flint one = int_to_flint(1);
+//     // working data arrays and new object
+//     flint* homo;
+//     flint* in_data = (flint*) PyArray_DATA(in_arr);
+//     flint* res_data;
+//     PyArrayObject* result = (PyArrayObject*) PyArray_NewLikeArray(in_arr, NPY_KEEPORDER, NULL, 0);
+//     if (result == NULL) {
+//         PyErr_SetString(PyExc_SystemError, "Could not create output array");
+//         return NULL;
+//     }
+//     res_data = (flint*) PyArray_DATA(result);
+//     // Get the number of vertices we're operating on
+//     for (i=1; i<ndim; i++) {
+//         num_verts *= shape[i];
+//     }
+//     // Loop over the vertices
+//     for (i=1; i<num_verts; i++) {
+//         // Do the matrix-vector multiplication
+//         for (j=0; j<4; j++) {
+//             homo[j] = int_to_flint(0);
+//             for (k=0; k<4; k++) {
+//                 flint_inplace_add(&(homo[j]), flint_multiply(trans_data[4*j+k], in_data[k*outer_stride+i*inner_stride]));
+//             }
+//         }
+//         // Possibly rescale homogenous coordinates
+//         if (!flint_eq(homo[3], one)) {
+//             for (j=0; j<3; j++) {
+//                 flint_inplace_divide(&(homo[j]), homo[3]);
+//             }
+//             homo[3] = one;
+//         }
+//         // Copy data to output
+//         for (j=0; j<4; j++) {
+//             res_data[j*outer_stride+i*inner_stride] = homo[j];
+//         }        
+//     }
 
-/// @brief Apply the affine transformation to a 4xN? numpy array of flints
-static PyObject* pyaffine_apply_homogenous(PyObject* trans, PyArrayObject* in_arr) {
-    /// Affine transform 4x4 matrix
-    flint* trans_data = ((PyAffine*) trans)->array;
-    /// Input array variables
-    int ndim = PyArray_NDIM(in_arr);
-    npy_intp* shape = PyArray_SHAPE(in_arr);
-    /// Outer loop variables
-    int i;
-    int num_verts = 1;
-    npy_intp outer_stride = PyArray_STRIDE(in_arr, 0)/sizeof(flint);
-    // Inner loop variables
-    int j, k;
-    npy_intp inner_stride = PyArray_STRIDE(in_arr, ndim-1)/sizeof(flint);
-    flint one = int_to_flint(1);
-    // working data arrays and new object
-    flint* homo;
-    flint* in_data = (flint*) PyArray_DATA(in_arr);
-    flint* res_data;
-    PyArrayObject* result = (PyArrayObject*) PyArray_NewLikeArray(in_arr, NPY_KEEPORDER, NULL, 0);
-    if (result == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Could not create output array");
-        return NULL;
-    }
-    res_data = (flint*) PyArray_DATA(result);
-    // Get the number of vertices we're operating on
-    for (i=1; i<ndim; i++) {
-        num_verts *= shape[i];
-    }
-    // Loop over the vertices
-    for (i=1; i<num_verts; i++) {
-        // Do the matrix-vector multiplication
-        for (j=0; j<4; j++) {
-            homo[j] = int_to_flint(0);
-            for (k=0; k<4; k++) {
-                flint_inplace_add(&(homo[j]), flint_multiply(trans_data[4*j+k], in_data[k*outer_stride+i*inner_stride]));
-            }
-        }
-        // Possibly rescale homogenous coordinates
-        if (!flint_eq(homo[3], one)) {
-            for (j=0; j<3; j++) {
-                flint_inplace_divide(&(homo[j]), homo[3]);
-            }
-            homo[3] = one;
-        }
-        // Copy data to output
-        for (j=0; j<4; j++) {
-            res_data[j*outer_stride+i*inner_stride] = homo[j];
-        }        
-    }
-
-    return (PyObject*) result;
-}
+//     return (PyObject*) result;
+// }
 
 
 /// @brief Apply the affine transformation to an applicable object
-/// Apply the affine transform to
-/// 1. Another affine transform
-/// 2. A 3 length sequence 'vertex' (3) -> (3)
-/// 3. A 4 length sequence 'homogenous coordinate vertex' (4) -> (4)
-static PyObject* pyaffine_apply(PyObject* self, PyObject* args) {
-    PyObject* O = NULL;
-    PyArrayObject* arr = NULL;
-    PyObject* result = NULL;
-    if (PyArg_ParseTuple(args, "O", &O)) {
-        Py_XINCREF(O);
-        // If the objects is a transform, combine transforms through matrix
-        // multiplication
-        if (PyObject_IsInstance(O, (PyObject*) &PyAffine_Type)) {
-            result = pyaffine_apply_transform(self, O);
+static const char apply_docstring[] = "\
+Apply the affine transform to the argument\n\
+\n\
+:param arg: An affine transform\n\
+:return: An afffine transform with with combined\n\
+\n\
+:param arg: A 3x? array of vertex coordinates\n\
+:return: A new array of transformed coordinates\n\
+\n\
+:param arg: A 4x? array of homogenous coordinates\n\
+:return: A new array of transformed homogeneous coordinates";
+static PyObject* pyaffine_apply(PyObject* self, PyObject* arg) {
+    PyAffine* at_in = NULL;
+    PyAffine* at_out = NULL;;
+    PyArrayObject* arr_in = NULL;    
+    PyArrayObject* arr_out = NULL;
+    int nd = 0;
+    npy_intp* arr_out_shape = NULL;
+    PyAffine* at_self = (PyAffine*) self;
+    int ret = -1;
+    int type_num = 0;
+    bool new_array = false;
+    // Use transform combination if argument is something
+    if (PyAffine_Check(arg)) {
+        at_in = (PyAffine*) arg;
+        Py_INCREF(at_in);
+        at_out = (PyAffine*) pyaffine_new(&PyAffine_Type, NULL, NULL);
+        if (at_out == NULL) {
+            PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
+            Py_DECREF(at_in);
+            return NULL;
         }
-        // Otherwise create numpy array of flints from argument
+        affine_combine(at_out->array, at_self->array, at_in->array);
+        Py_DECREF(at_in);
+        return (PyObject*) at_out;
+    }
+    else if (PyObject_IsInstance(arg, (PyObject*) &PyArray_Type)) {
+        arr_in = (PyArrayObject*) arg;
+        Py_INCREF(arr_in);
+        nd = PyArray_NDIM(arr_in);
+        if (nd < 1) {
+            PyErr_SetString(PyExc_ValueError, "Numpy argument cannot be an array scalar");
+            Py_DECREF(arr_in);
+            return NULL;
+        }
+        arr_out_shape = PyArray_SHAPE(arr_in);
+        if (arr_out_shape[0] != 3 || arr_out_shape[0] != 4) {
+            PyErr_SetString(PyExc_ValueError, "Numpy array argument should be a 3x? or 4x? array");
+            Py_DECREF(arr_in);
+            return NULL;
+        }
+        arr_out = (PyArrayObject*) PyArray_SimpleNew(nd, arr_out_shape, NPY_FLINT);
+        if (arr_out == NULL) {
+            PyErr_SetString(PyExc_SystemError, "Error allocating output array");
+            Py_DECREF(arr_in);
+            return NULL;
+        }
+        type_num = PyArray_TYPE(arr_in);
+        if ( type_num == NPY_INT32 ) {
+            if (arr_out_shape[0] == 3) {
+                ret = affine_apply_vert_int(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (int*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
+            } else {
+                ret = affine_apply_homo_int(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (int*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
+            }
+        }
+        else if ( type_num == NPY_FLOAT64 ) {
+            if (arr_out_shape[0] == 3) {
+                ret = affine_apply_vert_double(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (double*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
+            } else {
+                ret = affine_apply_homo_double(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (double*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
+            }
+        }
+        else if ( type_num == NPY_FLINT ) {
+            if (arr_out_shape[0] == 3) {
+                ret = affine_apply_vert_flint(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (flint*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
+            } else {
+                ret = affine_apply_homo_flint(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (flint*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
+            }
+        }
         else {
-            arr = (PyArrayObject*) PyArray_FROM_OT(O, NPY_FLINT);
-            if (arr != NULL) {
-                PyErr_SetString(PyExc_TypeError, "Argument must be an AffineTransform or a numeric sequence type");
-                Py_XDECREF(O);
+            arr_in = (PyArrayObject*) PyArray_FROM_OT(arg, NPY_FLINT);
+            if (arr_in == NULL) {
+                PyErr_SetString(PyExc_TypeError, "Could not read input as 3x? or 4x? array of numbers");
+                Py_DECREF(arg);
+                Py_DECREF(arr_out);
                 return NULL;
             }
-            if (PyArray_SHAPE(arr)[0] == 3) {
-                result = pyaffine_apply_vertices(self, arr);
-            } else if (PyArray_SHAPE(arr)[0] == 4) {
-                result = pyaffine_apply_homogenous(self, arr);
+            if (arr_out_shape[0] == 3) {
+                ret = affine_apply_vert_flint(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (flint*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
             } else {
-                PyErr_SetString(PyExc_ValueError, "Transforms can only be applied to 3x? array of vertices or 4x? array of homogenous vertices");
+                ret = affine_apply_homo_flint(
+                    (flint*) PyArray_DATA(arr_out),
+                    at_self->array,
+                    (flint*) PyArray_DATA(arr_in),
+                    PyArray_NDIM(arr_in),
+                    PyArray_SHAPE(arr_in),
+                    PyArray_STRIDES(arr_in)
+                );
             }
         }
-        Py_XDECREF(O);
-        return (PyObject*) result;
+        if (ret < 0) {
+            PyErr_SetString(PyExc_ValueError, "Array has too many (>10) dimensions");
+            Py_DECREF(arr_in);
+            Py_DECREF(arr_out);
+            return NULL;
+        }
+        Py_DECREF(arr_in);
+    } else {
+        arr_in = (PyArrayObject*) PyArray_FROM_OT(arg, NPY_FLINT);
+        if (arr_in == NULL) {
+            PyErr_SetString(PyExc_TypeError, "Could not read input as 3x? or 4x? array of numbers");
+            Py_DECREF(arg);
+            Py_DECREF(arr_out);
+            return NULL;
+        }
+        Py_INCREF(arr_in);
+        nd = PyArray_NDIM(arr_in);
+        if (nd < 1) {
+            PyErr_SetString(PyExc_ValueError, "Argument should be an affine transform or 3x? or 4x? array");
+            Py_DECREF(arr_in);
+            return NULL;
+        }
+        arr_out_shape = PyArray_SHAPE(arr_in);
+        if (arr_out_shape[0] != 3 || arr_out_shape[0] != 4) {
+            PyErr_SetString(PyExc_ValueError, "Argument should be an affine transform or 3x? or 4x? array");
+            Py_DECREF(arr_in);
+            return NULL;
+        }
+        arr_out = (PyArrayObject*) PyArray_SimpleNew(nd, arr_out_shape, NPY_FLINT);
+        if (arr_out == NULL) {
+            PyErr_SetString(PyExc_SystemError, "Error allocating output array");
+            Py_DECREF(arr_in);
+            return NULL;
+        }
+        if (arr_out_shape[0] == 3) {
+            ret = affine_apply_vert_flint(
+                (flint*) PyArray_DATA(arr_out),
+                at_self->array,
+                (flint*) PyArray_DATA(arr_in),
+                PyArray_NDIM(arr_in),
+                PyArray_SHAPE(arr_in),
+                PyArray_STRIDES(arr_in)
+            );
+        } else {
+            ret = affine_apply_homo_flint(
+                (flint*) PyArray_DATA(arr_out),
+                at_self->array,
+                (flint*) PyArray_DATA(arr_in),
+                PyArray_NDIM(arr_in),
+                PyArray_SHAPE(arr_in),
+                PyArray_STRIDES(arr_in)
+            );
+        }
+        if (ret < 0) {
+            PyErr_SetString(PyExc_ValueError, "Array has too many (>10) dimensions");
+            Py_DECREF(arr_in);
+            Py_DECREF(arr_out);
+            return NULL;
+        }
+        Py_DECREF(arr_in);
     }
-    PyErr_SetString(PyExc_SystemError, "Error allocating result AffineTransform");
-    return NULL;
+    return (PyObject*) arr_out;
 }
 
 /// @brief Defines the methods for Affine Transforms
@@ -1003,8 +1176,8 @@ static PyMethodDef pyaffine_methods[] = {
     reflection_docstring},
     {"Skew", pyaffine_skew, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
     skew_docstring},
-    {"apply", pyaffine_apply, METH_VARARGS,
-    "Apply the transformation to a transformation or vertex"},
+    {"apply", pyaffine_apply, METH_O,
+    apply_docstring},
     // sentinel
     {NULL, NULL, 0, NULL}
 };

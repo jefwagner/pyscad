@@ -134,6 +134,24 @@ static inline void affine_relocate_center(flint* self, flint* c) {
     }
 }
 
+/// @brief Combine two affine transforms to make a third
+void affine_combine(flint* out, flint* lhs, flint* rhs);
+
+/// @brief Apply an affine transformation to an array 3 component vertices
+int affine_apply_vert_int(flint* vert_out, flint* affine, int* vert_in,
+                             int ndims, long int* dims, long int* strides);
+int affine_apply_vert_double(flint* vert_out, flint* affine, double* vert_in,
+                             int ndims, long int* dims, long int* strides);
+int affine_apply_vert_flint(flint* vert_out, flint* affine, flint* vert_in,
+                             int ndims, long int* dims, long int* strides);
+/// @brief Apply an affine transformation to an array of 4 component homogenous coordinates
+int affine_apply_homo_int(flint* homo_out, flint* affine, int* homo_in,
+                             int ndims, long int* dims, long int* strides);
+int affine_apply_homo_double(flint* homo_out, flint* affine, double* homo_in,
+                             int ndims, long int* dims, long int* strides);
+int affine_apply_homo_flint(flint* homo_out, flint* affine, flint* homo_in,
+                             int ndims, long int* dims, long int* strides);
+
 #ifdef __cplusplus
 }
 #endif

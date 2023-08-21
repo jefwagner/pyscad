@@ -142,12 +142,13 @@ void affine_combine(flint* out, flint* lhs, flint* rhs) {
 
 /// @brief Maximum number of dimension for an array of vertices
 #define MAX_DIMS 10
-/// @brief
+/// @brief Helper function for the affine apply macros
 inline flint flint_identity(flint f){ return f; }
-/// @brief
+
+/// @brief Type generic application of affine transformation to an array of vertices
 #define AFFINE_APPLY_VERT(TYPE, TYPE_CONV_FUNC) \
 int affine_apply_vert_##TYPE(flint* vert_out, flint* affine, TYPE* vert_in,\
-                             int ndims, int* dims, int* strides) {\
+                             int ndims, long int* dims, long int* strides) {\
     int i, j, k;\
     int idx[MAX_DIMS];\
     uint8_t* cur_vertex_ptr;\
@@ -197,8 +198,8 @@ int affine_apply_vert_##TYPE(flint* vert_out, flint* affine, TYPE* vert_in,\
 }
 
 #define AFFINE_APPLY_HOMO(TYPE, TYPE_CONV_FUNC)\
-int affine_array_homo_##TYPE(flint* homo_out, flint* affine, TYPE* homo_in,\
-                             int ndims, int* dims, int* strides) {\
+int affine_apply_homo_##TYPE(flint* homo_out, flint* affine, TYPE* homo_in,\
+                             int ndims, long int* dims, long int* strides) {\
     int i, j, k;\
     int idx[MAX_DIMS];\
     uint8_t* cur_vertex_ptr;\
@@ -254,6 +255,7 @@ int affine_array_homo_##TYPE(flint* homo_out, flint* affine, TYPE* homo_in,\
     return 0;\
 }
 
+// Evaluate the macros
 AFFINE_APPLY_VERT(int, int_to_flint)
 AFFINE_APPLY_VERT(double, double_to_flint)
 AFFINE_APPLY_VERT(flint, flint_identity)

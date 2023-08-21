@@ -1,7 +1,7 @@
 [build-system]
-requires = ["setuptools>=61","oldest-supported-numpy",#"numpy-flint>=0.3.0"]
-    "numpy-flint @ file:///home/jef/numpy-flint/dist/numpy_flint-0.3.2-cp39-cp39-linux_aarch64.whl",
-]
+requires = ["setuptools>=61","oldest-supported-numpy","numpy-flint>=0.3.2"]
+    # "numpy-flint @ file:///home/jef/numpy-flint/dist/numpy_flint-0.3.2-cp39-cp39-linux_aarch64.whl",
+# ]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,8 +14,8 @@ license = {text="LGPL-3.0-or-later"}
 requires-python = ">=3.7"
 dependencies = [
     "numpy>=1.17",
-    # "numpy-flint>=0.3.0",
-    "numpy-flint @ file:///home/jef/numpy-flint/dist/numpy_flint-0.3.2-cp39-cp39-linux_aarch64.whl",
+    "numpy-flint>=0.3.2",
+    # "numpy-flint @ file:///home/jef/numpy-flint/dist/numpy_flint-0.3.2-cp39-cp39-linux_aarch64.whl",
     "pytest"
 ]
 dynamic = ["version"]
