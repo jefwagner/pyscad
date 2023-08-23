@@ -27,7 +27,7 @@ import flint
 setup_args = dict(
     ext_modules = [
         Extension(
-            name='pyscad.affine',
+            name='pyscad._c_affine',
             sources=['src/pyscad/csrc/affine.c','src/pyscad/csrc/pyaffine.c'],
             depends=['src/pyscad/csrc/affine.h','src/pyscad/csrc/pyaffine.h'],
             include_dirs=[

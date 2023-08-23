@@ -33,150 +33,29 @@
 
 #define AFFINE_MODULE
 #include "affine.h"
-#include "pyaffine.h"
+// #include "pyaffine.h"
 
-/// @brief The __new__ allocating constructor
-/// @param type The type of the PyObject
-/// @return A new PyObject of type `type`
-static PyObject* pyaffine_new(PyTypeObject* type, 
-                              PyObject* NPY_UNUSED(args),
-                              PyObject* NPY_UNUSED(kwargs)) {
-    PyAffine* self = (PyAffine*) type->tp_alloc(type, 0);
-    return (PyObject*) self;
-}
+#define NEW_AFFINE(NP_ARR, FLINT_ARR) \
+PyArrayObject* NP_ARR = NULL;\
+flint* FLINT_ARR = NULL;\
+const npy_intp _shape[] = {4,4};\
+NP_ARR = (PyArrayObject*) PyArray_SimpleNew(2, _shape, NPY_FLINT);\
+if (NP_ARR == NULL) {\
+    PyErr_SetString(PyExc_SystemError, "Error allocating new affine transform array");\
+    return NULL;\
+}\
+FLINT_ARR = PyArray_DATA(NP_ARR)
 
-/// @brief The __init__ initializing constructor
-/// @param self The object to be initialized
-/// @param args Unused positional argument tuple
-/// @param kwargs Unused keyword argument dict
-/// @return 0 on success, -1 on failure
-static int pyaffine_init(PyObject* self, PyObject* args, PyObject* kwargs) {
-    PyAffine* at_self = (PyAffine*) self;
-
-    if ((PyTuple_Size(args) != 0) || (kwargs && PyDict_Size(kwargs))){
-        PyErr_SetString(PyExc_TypeError,
-                        "AffineTrans constructor doesn't take any arguments");
-        return -1;
-    }
-    affine_eye(at_self->array);
-    return 0;
-}
-
-/// @brief The __str__ printing method
-/// @return A python string representation of the tracked value
-static PyObject* pyaffine_str(PyObject* self) {
-    PyAffine* at_self = (PyAffine*) self;
-    switch(at_self->type) {
-        case AT_TRANSLATION:
-            return PyUnicode_FromString("Translation");
-            break;
-        case AT_ROTATION:
-            return PyUnicode_FromString("Rotation");
-            break;
-        case AT_SCALE:
-            return PyUnicode_FromString("Scale");
-            break;
-        case AT_REFLECTION:
-            return PyUnicode_FromString("Reflection");
-            break;
-        case AT_SKEW:
-            return PyUnicode_FromString("SkewTransform");
-            break;
-        default:
-            break;
-    }
-    return PyUnicode_FromString("AffineTransform");
-}
-
-/// @brief The __hash__ function create an unique-ish integer from the flint.
-///        Implements Bob Jenkin's one-at-a-time hash.
-/// @return An integer to be used in a hash-table
-static Py_hash_t pyaffine_hash(PyObject *self) {
-    PyAffine* at_self = (PyAffine*) self;
-    uint8_t* array_as_bytes = (uint8_t*) at_self->array;
-    size_t i = 0;
-    Py_hash_t h = 0;
-    for (i=0; i<(16*sizeof(flint)); ++i) {
-        h += array_as_bytes[i];
-        h += h << 10;
-        h ^= h >> 6;
-    }
-    h += h << 3;
-    h ^= h >> 11;
-    h += h << 15;
-    return (h==-1)?2:h;
-}
-
-/// @brief Get the size of the interval of flint object
-/// This defines a member property getter for the size of the interval
-/// so you can get the endpoints of hte interval with `eps = f.eps`
-static const char get_array_docstring[] = "\
-The 4x4 matrix representation of the transformation.\n\
-\n\
-:getter: Returns a 4x4 numpy array of flints\n\
-:setter: Not implemented";
-static PyObject* pyaffine_get_array(PyObject *self, void *NPY_UNUSED(closure)) {
-    PyAffine* at_self = (PyAffine*) self;
-    // Create a new 4x4 numpy array
-    int nd = 2;
-    npy_intp dims[2] = {4,4};
-    PyObject* arr = PyArray_SimpleNewFromData(nd, dims, NPY_FLINT, (void*) at_self->array);
-    if (arr == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Could not get create new numpy array of flints");
-        return NULL;
-    }
-    return arr;
-}
-
-/// @brief Defines the property getter/setter methods
-static PyGetSetDef pyaffine_getset[] = {
-    {"array", pyaffine_get_array, NULL,
-    get_array_docstring, NULL},
-    //sentinal
-    {NULL, NULL, NULL, NULL, NULL}
-};
-
-/// @brief Set the array members from a 4x4 array
-static void pyaffine_from_4x4(PyAffine* self, PyArrayObject* arr) {
-    int i, j;
-    for (i=0; i<4; i++) {
-        for (j=0; j<4; j++) {
-            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
-        }
-    }
-}
-
-/// @brief Set the array members from a 4x3 array
-static void pyaffine_from_3x4(PyAffine* self, PyArrayObject* arr) {
-    int i, j;
-    for (i=0; i<3; i++) {
-        for (j=0; j<4; j++) {
-            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
-        }
-    }
-    for(j=0; j<3; j++) {
-        self->array[12+j] = int_to_flint(0);
-    }
-    self->array[15] = int_to_flint(1);
-}
-
-/// @brief Set the array members from a 3x3 array
-static void pyaffine_from_3x3(PyAffine* self, PyArrayObject* arr) {
-    int i, j;
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            self->array[4*i+j] = *((flint*) PyArray_GETPTR2(arr, i, j));
-        }
-        self->array[4*i+3] = int_to_flint(0);
-    }
-    for(j=0; j<3; j++) {
-        self->array[12+j] = int_to_flint(0);
-    }
-    self->array[15] = int_to_flint(1);
+/// @brief Create an identity affine transform
+PyDoc_STRVAR( eye_docstring, "Create an identify affine transform");
+static PyObject* pyaffine_eye(PyObject* self, PyObject* args) {
+    NEW_AFFINE(aff, arr);
+    affine_eye(arr);
+    return (PyObject*) aff;
 }
 
 /// @brief Classmethod for making an AffineTransform from a matrix
-static const char from_mat_docstring[] ="\
+PyDoc_STRVAR( from_mat_docstring, "\
 Create a new generic affine transform from a 4x4, 3x4 or 3x3 matrix\n\
 \n\
 * A 3x3 matrix will only specify the linear transformation.\n\
@@ -186,139 +65,118 @@ Create a new generic affine transform from a 4x4, 3x4 or 3x3 matrix\n\
 \n\
 :param mat: The input matrix (any properly shaped nested sequence type).\n\
 \n\
-:return: An AffineTransform object corresponding to the matrix";
-static PyObject* pyaffine_from_mat(PyObject* cls, PyObject* args) {
-    PyAffine* at_ref = NULL;
-    PyArrayObject* arr = NULL;
-    PyObject* O = NULL;
-    npy_intp* shape = NULL;
-    if (PyArg_ParseTuple(args, "O", &O)) {
-        Py_XINCREF(O);
-        at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
-        if (at_ref == NULL) {
-            PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-            return NULL;
-        }
-        arr = (PyArrayObject*) PyArray_FROM_OT(O, NPY_FLINT);
-        if (arr != NULL) {
-            if (PyArray_NDIM(arr) == 2) {
-                shape = PyArray_SHAPE(arr);
-                if (shape[0] == 4 && shape[1] == 4) {
-                    at_ref->type = AT_GENERIC;
-                    pyaffine_from_4x4(at_ref, arr);
-                    Py_DECREF(O);
-                    Py_DECREF(arr);
-                    return (PyObject*) at_ref;
-                }
-                if (shape[0] == 3 && shape[1] == 4) {
-                    at_ref->type = AT_GENERIC;
-                    pyaffine_from_3x4(at_ref, arr);
-                    Py_DECREF(O);
-                    Py_DECREF(arr);
-                    return (PyObject*) at_ref;
-                }
-                if (shape[0] == 3 && shape[1] == 3) {
-                    at_ref->type = AT_GENERIC;
-                    pyaffine_from_3x3(at_ref, arr);
-                    Py_DECREF(O);
-                    Py_DECREF(arr);
-                    return (PyObject*) at_ref;
-                }
-            }
+:return: An AffineTransform object corresponding to the matrix");
+static PyObject* pyaffine_from_mat(PyObject* self, PyObject* arg) {
+    int i, j;
+    PyArrayObject* in_arr = NULL;
+    npy_intp* in_shape = NULL;
+    NEW_AFFINE(out_arr, out_data);    
+    in_arr = (PyArrayObject*) PyArray_FROM_OT(arg, NPY_FLINT);
+    if (in_arr == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Argument must castable to a numpy array");
+        Py_DECREF(out_arr);
+        return NULL;
+    }
+    Py_INCREF(in_arr);
+    in_shape = PyArray_SHAPE(in_arr);
+    if (
+            PyArray_NDIM(in_arr) != 2 ||
+            !((in_shape[0] == 4 && in_shape[1] == 4) ||
+              (in_shape[0] == 3 && in_shape[1] == 4) ||             
+              (in_shape[0] == 3 && in_shape[1] == 3))             
+        ) {
+        PyErr_SetString(PyExc_ValueError, "Argument must be a 4x4, 3x4, or 3x3 array");
+        Py_DECREF(in_arr);
+        Py_DECREF(out_arr);
+        return NULL;
+    }
+    for (i=0; i<in_shape[0]; i++) {
+        for (j=0; j<in_shape[1]; j++) {
+            out_data[4*i+j] = *((flint*) PyArray_GETPTR2(in_arr, i, j));
         }
     }
-    PyErr_SetString(PyExc_ValueError, "Argument must be a 4x4, 3x4 or 4x3 array-like object");
-    Py_XDECREF(O);
-    Py_XDECREF(arr);
-    return NULL;
+    if (in_shape[0] == 3) {
+        for (j=0; j<3; j++) {
+            out_data[4*3+j] = int_to_flint(0);
+        }
+        out_data[4*3+3] = int_to_flint(1);
+    }
+    if (in_shape[1] == 3) {
+        for(i=0; i<3; i++) {
+            out_data[4*i+3] = int_to_flint(0);
+        }
+    }
+    return (PyObject*) out_arr;
 }
 
 /// @brief Create a new pure translation AffineTransform
-/// @param args The [x,y,z] coordinates of the translation
-static const char translation_docstring[] = "\
+PyDoc_STRVAR( translation_docstring, "\
 Create a new pure translation transformation.\n\
 \n\
 :param d: A 3-length sequence [dx, dy, dz]\n\
 :param center: Ignored\n\
 \n\
-:return: An pure translation AffineTransformation.";
-static PyObject* pyaffine_translation(PyObject* cls, PyObject* args, PyObject* kwargs) {
+:return: An pure translation AffineTransformation.");
+static PyObject* pyaffine_translation(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char* translation_keywords[] = {"d", "center", NULL};
-    int i;
-    PyAffine* at_ref = NULL;
     PyObject* d_obj = NULL;
     PyArrayObject* d_arr = NULL;
-    flint d[3];
     bool valid_d = false;
     PyObject* c_obj = NULL;
+    NEW_AFFINE(out_arr, out_data);
 
-    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
-    if (at_ref == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-        return NULL;
-    }
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", translation_keywords, &d_obj, &c_obj)) {
         Py_INCREF(d_obj);
         d_arr = (PyArrayObject*) PyArray_FROM_OT(d_obj, NPY_FLINT);
         if (d_arr != NULL) {
-            if (PyArray_NDIM(d_arr) == 1) {
-                if (PyArray_SHAPE(d_arr)[0] == 3) {
-                    for (i=0; i<3; i++) {
-                        d[i] = *((flint*) PyArray_GETPTR1(d_arr, i));
-                    }
-                    valid_d = true;
-                }
+            Py_INCREF(d_arr);
+            if (PyArray_NDIM(d_arr) == 1 && PyArray_SHAPE(d_arr)[0] == 3) {
+                affine_set_translation(out_data, (flint*) PyArray_DATA(d_arr));
+                valid_d = true;
             }
-            Py_DECREF(d_arr);
         }
         Py_DECREF(d_obj);
     }
     if (!valid_d) {
         PyErr_SetString(PyExc_ValueError, "Translation argument should be a 3 length sequence");
-        Py_XDECREF(at_ref);
+        Py_DECREF(out_arr);
         return NULL;
     }
-    at_ref->type = AT_TRANSLATION;
-    affine_set_translation(at_ref->array, d);
-    return (PyObject*) at_ref;
+    return (PyObject*) out_arr;
 }
 
+// Temporarily keeping around to remind myself how to 'print debug'
+// printf("%s\n", Py_TYPE(s_arg)->tp_name);
+// printf("%d\n", PyFlint_Check(s_arg));
 /// @brief Create a new pure scaling AffineTransform
-static const char scale_docstring[] = "\
+PyDoc_STRVAR( scale_docstring, "\
 Create a new pure scaling transformation.\n\
 \n\
 :param s: A scalar or 3-length sequence [sx, sy, sz]\n\
 :param center: Optional 3-length center position [cx, cy, cz] for the scaling\n\
     transform\n\
 \n\
-:return: A scaling if AffineTransformation.";
-static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs) {
+:return: A scaling if AffineTransformation.");
+static PyObject* pyaffine_scale(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char* scale_keywords[] = {"s", "center", NULL};
     int i;
     long long n;
     double d;
-    PyAffine* at_ref = NULL;
     // variable for scale
     bool valid_scale = false;
     PyObject* s_arg = NULL;
     PyArrayObject* s_arr = NULL;
-    flint s[3] = {0};
+    flint s[3];
     // variable for center
     bool use_center = false;
     PyObject* c_arg = NULL;
     PyArrayObject* c_arr = NULL;
-    flint c[3] = {0};
-    // allocate new affine transform PyObject
-    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
-    if (at_ref == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-        return NULL;
-    }
+    flint c[3];
+    // allocate new affine transform
+    NEW_AFFINE(out_arr, out_data);
+
     // Parse args
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", scale_keywords, &s_arg, &c_arg)) {
-        // Temporarily keeping around to remind myself how to 'print debug'
-        // printf("%s\n", Py_TYPE(s_arg)->tp_name);
-        // printf("%d\n", PyFlint_Check(s_arg));
         // Check for int, double, of flint scalar
         // Parse out the scale argument
         Py_INCREF(s_arg);
@@ -338,7 +196,7 @@ static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs)
         }
         else if (PyFlint_Check(s_arg)) {
             for (i=0; i<3; i++) {
-                s[i] = ((PyFlint*) s_arg)->obval;
+                s[i] = PyFlint_AsFlint(s_arg);
             }
             valid_scale = true;
         }
@@ -374,7 +232,7 @@ static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs)
             }
             if (!use_center) {
                 PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
-                Py_DECREF(at_ref);
+                Py_DECREF(out_arr);
                 Py_DECREF(c_arg);
                 return NULL;
             }
@@ -383,19 +241,18 @@ static PyObject* pyaffine_scale(PyObject* cls, PyObject* args, PyObject* kwargs)
     }
     if (!valid_scale) {
         PyErr_SetString(PyExc_ValueError, "s must be a scalar or scalar or 3-length non-uniform scaling [sx, sy, sz]");
-        Py_DECREF(at_ref);
+        Py_DECREF(out_arr);
         return NULL;
     }
-    at_ref->type = AT_SCALE;
-    affine_set_scale(at_ref->array, s);
+    affine_set_scale(out_data, s);
     if (use_center) {
-        affine_relocate_center(at_ref->array, c);
+        affine_relocate_center(out_data, c);
     }
-    return (PyObject*) at_ref;
+    return (PyObject*) out_arr;
 }
 
 /// @brief Create a new pure rotation AffineTransform
-static const char rotation_docstring[] = "\
+PyDoc_STRVAR( rotation_docstring, "\
 Create a new pure rotation transformation.\n\
 \n\
 :param axis: The character 'x','y','z' or a three length vector [ax, ay, az]\n\
@@ -403,11 +260,10 @@ Create a new pure rotation transformation.\n\
 :param center: Optional 3-length position [cx, cy, cz] for to specify a point\n\
     on the axix of rotation\n\
 \n\
-:return: A rotation AffineTransformation.";
-static PyObject* pyaffine_rotation(PyObject* cls, PyObject* args, PyObject* kwargs) {
+:return: A rotation AffineTransformation.");
+static PyObject* pyaffine_rotation(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char* rotation_keywords[] = {"axis", "angle", "center", NULL};
     int i;
-    PyAffine* at_ref = NULL;
     // axis variables
     bool valid_a = false;
     PyObject* a_arg = NULL;
@@ -423,13 +279,9 @@ static PyObject* pyaffine_rotation(PyObject* cls, PyObject* args, PyObject* kwar
     PyObject* c_arg = NULL;
     PyArrayObject* c_arr = NULL;
     flint c[3];
+    NEW_AFFINE(out_arr, out_data);
 
     // allocate new affine transform objectc
-    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
-    if (at_ref == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-        return NULL;
-    }
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "OO|$O", rotation_keywords, &a_arg, &th_arg, &c_arg)) {
         Py_INCREF(a_arg);
         Py_INCREF(th_arg);
@@ -502,7 +354,7 @@ static PyObject* pyaffine_rotation(PyObject* cls, PyObject* args, PyObject* kwar
             }
             if (!use_center) {
                 PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
-                Py_DECREF(at_ref);
+                Py_DECREF(out_arr);
                 Py_DECREF(c_arg);
                 return NULL;
             }
@@ -511,41 +363,40 @@ static PyObject* pyaffine_rotation(PyObject* cls, PyObject* args, PyObject* kwar
     }
     if (!valid_a) {
         PyErr_SetString(PyExc_ValueError, "axis must be either a single character 'x','y','z' or 3-length axis [ax, ay, az]");
-        Py_DECREF(at_ref);
+        Py_DECREF(out_arr);
         return NULL;
     }
     else if (!valid_th) {
         PyErr_SetString(PyExc_ValueError, "angle must be a numeric value");
-        Py_DECREF(at_ref);
+        Py_DECREF(out_arr);
         return NULL;
     }
-    at_ref->type = AT_ROTATION;
     switch(a_char) {
         case 0: {
-            affine_set_rotaa(at_ref->array, a, th);
+            affine_set_rotaa(out_data, a, th);
             break;
         }
         case 'x': {
-            affine_set_rotx(at_ref->array, th);
+            affine_set_rotx(out_data, th);
             break;
         }
         case 'y': {
-            affine_set_roty(at_ref->array, th);
+            affine_set_roty(out_data, th);
             break;
         }
         case 'z': {
-            affine_set_rotz(at_ref->array, th);
+            affine_set_rotz(out_data, th);
             break;
         }
     }
     if (use_center) {
-        affine_relocate_center(at_ref->array, c);
+        affine_relocate_center(out_data, c);
     }
-    return (PyObject*) at_ref;
+    return (PyObject*) out_arr;
 }
 
 /// @brief Create a new pure reflection AffineTransform
-static const char reflection_docstring[] = "\
+PyDoc_STRVAR( reflection_docstring, "\
 Create a new pure reflection transformation.\n\
 \n\
 :param normal: The character 'x','y','z' or a 3 length [ux, uy, uz] vector for\n\
@@ -553,11 +404,10 @@ Create a new pure reflection transformation.\n\
 :param center: Optional 3-length center position [cx, cy, cz] a point on the\n\
     plane of reflection operation.\n\
 \n\
-:return: A skew AffineTransformation.";
-static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args, PyObject* kwargs) {
+:return: A skew AffineTransformation.");
+static PyObject* pyaffine_reflection(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char* reflection_keywords[] = {"normal", "center", NULL};
     int i;
-    PyAffine* at_ref = NULL;
     // axis variables
     bool valid_n = false;
     PyObject* n_arg = NULL;
@@ -569,13 +419,9 @@ static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args, PyObject* kw
     PyObject* c_arg = NULL;
     PyArrayObject* c_arr = NULL;
     flint c[3];
+    NEW_AFFINE(out_arr, out_data);
 
     // allocate new affine transform objectc
-    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
-    if (at_ref == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-        return NULL;
-    }
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "O|$O", reflection_keywords, &n_arg, &c_arg)) {
         Py_INCREF(n_arg);
         // Get the normal vector argument
@@ -634,7 +480,7 @@ static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args, PyObject* kw
             }
             if (!use_center) {
                 PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
-                Py_DECREF(at_ref);
+                Py_DECREF(out_arr);
                 Py_DECREF(c_arg);
                 return NULL;
             }
@@ -643,36 +489,36 @@ static PyObject* pyaffine_reflection(PyObject* cls, PyObject* args, PyObject* kw
     }
     if (!valid_n) {
         PyErr_SetString(PyExc_ValueError, "normal must be either a single character 'x','y','z' or 3-length axis [nx, ny, nz]");
-        Py_DECREF(at_ref);
+        Py_DECREF(out_arr);
         return NULL;
     }
     
     switch (n_char) {
         case 0: {
-            affine_set_refl_u(at_ref->array, n);
+            affine_set_refl_u(out_data, n);
             break;
         }
         case 'x': {
-            affine_set_refl_yz(at_ref->array);
+            affine_set_refl_yz(out_data);
             break;
         }
         case 'y': {
-            affine_set_refl_zx(at_ref->array);
+            affine_set_refl_zx(out_data);
             break;
         }
         case 'z': {
-            affine_set_refl_xy(at_ref->array);
+            affine_set_refl_xy(out_data);
             break;
         }
     }
     if (use_center) {
-        affine_relocate_center(at_ref->array, c);
+        affine_relocate_center(out_data, c);
     }
-    return (PyObject*) at_ref;
+    return (PyObject*) out_arr;
 }
 
 /// @brief Create a new pure axis aligned skew AffineTransform
-static const char skew_docstring[] = "\
+PyDoc_STRVAR( skew_docstring, "\
 Create a new pure skew transformation.\n\
 \n\
 :param n: The character 'x','y','z' or a 3 length [nx, ny, nz] normal\n\
@@ -681,11 +527,10 @@ Create a new pure skew transformation.\n\
 :param center: Optional 3-length center position [cx, cy, cz] for the center of\n\
     the skew operation.\n\
 \n\
-:return: A skew AffineTransformation.";
-static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) {
+:return: A skew AffineTransformation.");
+static PyObject* pyaffine_skew(PyObject* self, PyObject* args, PyObject* kwargs) {
     static char* skew_keywords[] = {"n", "s", "center", NULL};
     int i;
-    PyAffine* at_ref = NULL;
     // skew plane normal variables
     bool valid_n = false;
     PyObject* n_arg = NULL;
@@ -702,13 +547,9 @@ static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) 
     PyObject* c_arg = NULL;
     PyArrayObject* c_arr = NULL;
     flint c[3];
-
     // allocate new affine transform objectc
-    at_ref = (PyAffine*) pyaffine_new((PyTypeObject*) cls, NULL, NULL);
-    if (at_ref == NULL) {
-        PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-        return NULL;
-    }
+    NEW_AFFINE(out_arr, out_data);
+
     if (PyArg_ParseTupleAndKeywords(args, kwargs, "OO|$O", skew_keywords, &n_arg, &s_arg, &c_arg)) {
         Py_INCREF(n_arg);
         Py_INCREF(s_arg);
@@ -785,7 +626,7 @@ static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) 
             }
             if (!use_center) {
                 PyErr_SetString(PyExc_ValueError, "center must be a 3-length position [cx, cy, cz]");
-                Py_DECREF(at_ref);
+                Py_DECREF(out_arr);
                 Py_DECREF(c_arg);
                 return NULL;
             }
@@ -794,20 +635,19 @@ static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) 
     }
     if (!valid_n) {
         PyErr_SetString(PyExc_ValueError, "skew normal must be either a single character 'x','y','z' or 3-length axis [nx, ny, nz]");
-        Py_DECREF(at_ref);
+        Py_DECREF(out_arr);
         return NULL;
     }
     if (!valid_s) {
         PyErr_SetString(PyExc_ValueError, "skew direction must be a 3-length vector [sx, sy, sz]");
-        Py_DECREF(at_ref);
+        Py_DECREF(out_arr);
         return NULL;
     }
-    at_ref->type = AT_SKEW;
-    affine_set_skew(at_ref->array, n, s);
+    affine_set_skew(out_data, n, s);
     if (use_center) {
-        affine_relocate_center(at_ref->array, c);
+        affine_relocate_center(out_data, c);
     }
-    return (PyObject*) at_ref;
+    return (PyObject*) out_arr;
 }
 
 // /// @brief Combine two affine transforms through matrix multiplication
@@ -836,6 +676,40 @@ static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) 
 //     }
 //     return (PyObject*) result;
 // }
+
+// "(4,4),(3) -> (3)"
+static void pyaffine_apply_vert(char** args, 
+                                npy_intp const* dims,
+                                npy_intp const* strides,
+                                void* data) {
+    npy_intp i, j, k, n;
+    npy_intp N = dims[0]
+    npy_intp four = dims[1];
+    npy_intp three = dims[2];
+    char* af_base = args[0];
+    char* v_in_base = args[1];
+    char* v_out_base = args[2];
+    npy_intp d_af_n = strides[0];
+    npy_intp d_v_in_n = strides[1];
+    npy_intp d_v_out_n = strides[2];
+    npy_intp d_af_i = strides[3];
+    npy_intp d_af_j = strides[4];
+    npy_intp d_v_in_j = strides[5];
+    npy_intp_d_v_out_j = strids[6];        
+    flint fv_in, persp_dot;
+    for (n=0; n<N; n++) {
+        for (i=0; i<3; i++) {
+            *((flint*) v_out) = int_to_flint(0);
+            for (j=0; j<3; j++) {
+                foo;
+            }
+            af += d_af_i;
+        }
+    }
+}
+
+// pyaffine_rescale_homo
+// "(4,m?) -> (4,m?)"
 
 // /// @brief Apply the affine transformation to a 3xN? numpy array of flints
 // /// This 
@@ -946,269 +820,235 @@ static PyObject* pyaffine_skew(PyObject* cls, PyObject* args, PyObject* kwargs) 
 //     return (PyObject*) result;
 // }
 
-
 /// @brief Apply the affine transformation to an applicable object
-static const char apply_docstring[] = "\
-Apply the affine transform to the argument\n\
-\n\
-:param arg: An affine transform\n\
-:return: An afffine transform with with combined\n\
-\n\
-:param arg: A 3x? array of vertex coordinates\n\
-:return: A new array of transformed coordinates\n\
-\n\
-:param arg: A 4x? array of homogenous coordinates\n\
-:return: A new array of transformed homogeneous coordinates";
-static PyObject* pyaffine_apply(PyObject* self, PyObject* arg) {
-    PyAffine* at_in = NULL;
-    PyAffine* at_out = NULL;;
-    PyArrayObject* arr_in = NULL;    
-    PyArrayObject* arr_out = NULL;
-    int nd = 0;
-    npy_intp* arr_out_shape = NULL;
-    PyAffine* at_self = (PyAffine*) self;
-    int ret = -1;
-    int type_num = 0;
-    bool new_array = false;
-    // Use transform combination if argument is something
-    if (PyAffine_Check(arg)) {
-        at_in = (PyAffine*) arg;
-        Py_INCREF(at_in);
-        at_out = (PyAffine*) pyaffine_new(&PyAffine_Type, NULL, NULL);
-        if (at_out == NULL) {
-            PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
-            Py_DECREF(at_in);
-            return NULL;
-        }
-        affine_combine(at_out->array, at_self->array, at_in->array);
-        Py_DECREF(at_in);
-        return (PyObject*) at_out;
-    }
-    else if (PyObject_IsInstance(arg, (PyObject*) &PyArray_Type)) {
-        arr_in = (PyArrayObject*) arg;
-        Py_INCREF(arr_in);
-        nd = PyArray_NDIM(arr_in);
-        if (nd < 1) {
-            PyErr_SetString(PyExc_ValueError, "Numpy argument cannot be an array scalar");
-            Py_DECREF(arr_in);
-            return NULL;
-        }
-        arr_out_shape = PyArray_SHAPE(arr_in);
-        if (arr_out_shape[0] != 3 || arr_out_shape[0] != 4) {
-            PyErr_SetString(PyExc_ValueError, "Numpy array argument should be a 3x? or 4x? array");
-            Py_DECREF(arr_in);
-            return NULL;
-        }
-        arr_out = (PyArrayObject*) PyArray_SimpleNew(nd, arr_out_shape, NPY_FLINT);
-        if (arr_out == NULL) {
-            PyErr_SetString(PyExc_SystemError, "Error allocating output array");
-            Py_DECREF(arr_in);
-            return NULL;
-        }
-        type_num = PyArray_TYPE(arr_in);
-        if ( type_num == NPY_INT32 ) {
-            if (arr_out_shape[0] == 3) {
-                ret = affine_apply_vert_int(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (int*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            } else {
-                ret = affine_apply_homo_int(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (int*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            }
-        }
-        else if ( type_num == NPY_FLOAT64 ) {
-            if (arr_out_shape[0] == 3) {
-                ret = affine_apply_vert_double(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (double*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            } else {
-                ret = affine_apply_homo_double(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (double*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            }
-        }
-        else if ( type_num == NPY_FLINT ) {
-            if (arr_out_shape[0] == 3) {
-                ret = affine_apply_vert_flint(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (flint*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            } else {
-                ret = affine_apply_homo_flint(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (flint*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            }
-        }
-        else {
-            arr_in = (PyArrayObject*) PyArray_FROM_OT(arg, NPY_FLINT);
-            if (arr_in == NULL) {
-                PyErr_SetString(PyExc_TypeError, "Could not read input as 3x? or 4x? array of numbers");
-                Py_DECREF(arg);
-                Py_DECREF(arr_out);
-                return NULL;
-            }
-            if (arr_out_shape[0] == 3) {
-                ret = affine_apply_vert_flint(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (flint*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            } else {
-                ret = affine_apply_homo_flint(
-                    (flint*) PyArray_DATA(arr_out),
-                    at_self->array,
-                    (flint*) PyArray_DATA(arr_in),
-                    PyArray_NDIM(arr_in),
-                    PyArray_SHAPE(arr_in),
-                    PyArray_STRIDES(arr_in)
-                );
-            }
-        }
-        if (ret < 0) {
-            PyErr_SetString(PyExc_ValueError, "Array has too many (>10) dimensions");
-            Py_DECREF(arr_in);
-            Py_DECREF(arr_out);
-            return NULL;
-        }
-        Py_DECREF(arr_in);
-    } else {
-        arr_in = (PyArrayObject*) PyArray_FROM_OT(arg, NPY_FLINT);
-        if (arr_in == NULL) {
-            PyErr_SetString(PyExc_TypeError, "Could not read input as 3x? or 4x? array of numbers");
-            Py_DECREF(arg);
-            Py_DECREF(arr_out);
-            return NULL;
-        }
-        Py_INCREF(arr_in);
-        nd = PyArray_NDIM(arr_in);
-        if (nd < 1) {
-            PyErr_SetString(PyExc_ValueError, "Argument should be an affine transform or 3x? or 4x? array");
-            Py_DECREF(arr_in);
-            return NULL;
-        }
-        arr_out_shape = PyArray_SHAPE(arr_in);
-        if (arr_out_shape[0] != 3 || arr_out_shape[0] != 4) {
-            PyErr_SetString(PyExc_ValueError, "Argument should be an affine transform or 3x? or 4x? array");
-            Py_DECREF(arr_in);
-            return NULL;
-        }
-        arr_out = (PyArrayObject*) PyArray_SimpleNew(nd, arr_out_shape, NPY_FLINT);
-        if (arr_out == NULL) {
-            PyErr_SetString(PyExc_SystemError, "Error allocating output array");
-            Py_DECREF(arr_in);
-            return NULL;
-        }
-        if (arr_out_shape[0] == 3) {
-            ret = affine_apply_vert_flint(
-                (flint*) PyArray_DATA(arr_out),
-                at_self->array,
-                (flint*) PyArray_DATA(arr_in),
-                PyArray_NDIM(arr_in),
-                PyArray_SHAPE(arr_in),
-                PyArray_STRIDES(arr_in)
-            );
-        } else {
-            ret = affine_apply_homo_flint(
-                (flint*) PyArray_DATA(arr_out),
-                at_self->array,
-                (flint*) PyArray_DATA(arr_in),
-                PyArray_NDIM(arr_in),
-                PyArray_SHAPE(arr_in),
-                PyArray_STRIDES(arr_in)
-            );
-        }
-        if (ret < 0) {
-            PyErr_SetString(PyExc_ValueError, "Array has too many (>10) dimensions");
-            Py_DECREF(arr_in);
-            Py_DECREF(arr_out);
-            return NULL;
-        }
-        Py_DECREF(arr_in);
-    }
-    return (PyObject*) arr_out;
-}
+// static PyObject* pyaffine_apply(PyObject* self, PyObject* arg) {
+//     PyAffine* at_in = NULL;
+//     PyAffine* at_out = NULL;;
+//     PyArrayObject* arr_in = NULL;    
+//     PyArrayObject* arr_out = NULL;
+//     int nd = 0;
+//     npy_intp* arr_out_shape = NULL;
+//     PyAffine* at_self = (PyAffine*) self;
+//     int ret = -1;
+//     int type_num = 0;
+//     bool new_array = false;
+//     // Use transform combination if argument is something
+//     if (PyAffine_Check(arg)) {
+//         at_in = (PyAffine*) arg;
+//         Py_INCREF(at_in);
+//         at_out = (PyAffine*) pyaffine_new(&PyAffine_Type, NULL, NULL);
+//         if (at_out == NULL) {
+//             PyErr_SetString(PyExc_SystemError, "Error allocating new AffineTransform");
+//             Py_DECREF(at_in);
+//             return NULL;
+//         }
+//         affine_combine(at_out->array, at_self->array, at_in->array);
+//         Py_DECREF(at_in);
+//         return (PyObject*) at_out;
+//     }
+//     else if (PyObject_IsInstance(arg, (PyObject*) &PyArray_Type)) {
+//         arr_in = (PyArrayObject*) arg;
+//         Py_INCREF(arr_in);
+//         nd = PyArray_NDIM(arr_in);
+//         if (nd < 1) {
+//             PyErr_SetString(PyExc_ValueError, "Numpy argument cannot be an array scalar");
+//             Py_DECREF(arr_in);
+//             return NULL;
+//         }
+//         arr_out_shape = PyArray_SHAPE(arr_in);
+//         if (arr_out_shape[0] != 3 || arr_out_shape[0] != 4) {
+//             PyErr_SetString(PyExc_ValueError, "Numpy array argument should be a 3x? or 4x? array");
+//             Py_DECREF(arr_in);
+//             return NULL;
+//         }
+//         arr_out = (PyArrayObject*) PyArray_SimpleNew(nd, arr_out_shape, NPY_FLINT);
+//         if (arr_out == NULL) {
+//             PyErr_SetString(PyExc_SystemError, "Error allocating output array");
+//             Py_DECREF(arr_in);
+//             return NULL;
+//         }
+//         type_num = PyArray_TYPE(arr_in);
+//         if ( type_num == NPY_INT32 ) {
+//             if (arr_out_shape[0] == 3) {
+//                 ret = affine_apply_vert_int(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (int*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             } else {
+//                 ret = affine_apply_homo_int(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (int*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             }
+//         }
+//         else if ( type_num == NPY_FLOAT64 ) {
+//             if (arr_out_shape[0] == 3) {
+//                 ret = affine_apply_vert_double(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (double*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             } else {
+//                 ret = affine_apply_homo_double(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (double*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             }
+//         }
+//         else if ( type_num == NPY_FLINT ) {
+//             if (arr_out_shape[0] == 3) {
+//                 ret = affine_apply_vert_flint(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (flint*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             } else {
+//                 ret = affine_apply_homo_flint(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (flint*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             }
+//         }
+//         else {
+//             arr_in = (PyArrayObject*) PyArray_FROM_OT(arg, NPY_FLINT);
+//             if (arr_in == NULL) {
+//                 PyErr_SetString(PyExc_TypeError, "Could not read input as 3x? or 4x? array of numbers");
+//                 Py_DECREF(arg);
+//                 Py_DECREF(arr_out);
+//                 return NULL;
+//             }
+//             if (arr_out_shape[0] == 3) {
+//                 ret = affine_apply_vert_flint(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (flint*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             } else {
+//                 ret = affine_apply_homo_flint(
+//                     (flint*) PyArray_DATA(arr_out),
+//                     at_self->array,
+//                     (flint*) PyArray_DATA(arr_in),
+//                     PyArray_NDIM(arr_in),
+//                     PyArray_SHAPE(arr_in),
+//                     PyArray_STRIDES(arr_in)
+//                 );
+//             }
+//         }
+//         if (ret < 0) {
+//             PyErr_SetString(PyExc_ValueError, "Array has too many (>10) dimensions");
+//             Py_DECREF(arr_in);
+//             Py_DECREF(arr_out);
+//             return NULL;
+//         }
+//         Py_DECREF(arr_in);
+//     } else {
+//         arr_in = (PyArrayObject*) PyArray_FROM_OT(arg, NPY_FLINT);
+//         if (arr_in == NULL) {
+//             PyErr_SetString(PyExc_TypeError, "Could not read input as 3x? or 4x? array of numbers");
+//             Py_DECREF(arg);
+//             Py_DECREF(arr_out);
+//             return NULL;
+//         }
+//         Py_INCREF(arr_in);
+//         nd = PyArray_NDIM(arr_in);
+//         if (nd < 1) {
+//             PyErr_SetString(PyExc_ValueError, "Argument should be an affine transform or 3x? or 4x? array");
+//             Py_DECREF(arr_in);
+//             return NULL;
+//         }
+//         arr_out_shape = PyArray_SHAPE(arr_in);
+//         if (arr_out_shape[0] != 3 || arr_out_shape[0] != 4) {
+//             PyErr_SetString(PyExc_ValueError, "Argument should be an affine transform or 3x? or 4x? array");
+//             Py_DECREF(arr_in);
+//             return NULL;
+//         }
+//         arr_out = (PyArrayObject*) PyArray_SimpleNew(nd, arr_out_shape, NPY_FLINT);
+//         if (arr_out == NULL) {
+//             PyErr_SetString(PyExc_SystemError, "Error allocating output array");
+//             Py_DECREF(arr_in);
+//             return NULL;
+//         }
+//         if (arr_out_shape[0] == 3) {
+//             ret = affine_apply_vert_flint(
+//                 (flint*) PyArray_DATA(arr_out),
+//                 at_self->array,
+//                 (flint*) PyArray_DATA(arr_in),
+//                 PyArray_NDIM(arr_in),
+//                 PyArray_SHAPE(arr_in),
+//                 PyArray_STRIDES(arr_in)
+//             );
+//         } else {
+//             ret = affine_apply_homo_flint(
+//                 (flint*) PyArray_DATA(arr_out),
+//                 at_self->array,
+//                 (flint*) PyArray_DATA(arr_in),
+//                 PyArray_NDIM(arr_in),
+//                 PyArray_SHAPE(arr_in),
+//                 PyArray_STRIDES(arr_in)
+//             );
+//         }
+//         if (ret < 0) {
+//             PyErr_SetString(PyExc_ValueError, "Array has too many (>10) dimensions");
+//             Py_DECREF(arr_in);
+//             Py_DECREF(arr_out);
+//             return NULL;
+//         }
+//         Py_DECREF(arr_in);
+//     }
+//     return (PyObject*) arr_out;
+// }
 
-/// @brief Defines the methods for Affine Transforms
-static PyMethodDef pyaffine_methods[] = {
-    // Pickle support functions
-    {"from_mat", pyaffine_from_mat, METH_CLASS | METH_VARARGS,
-    from_mat_docstring},
-    {"Translation", pyaffine_translation, METH_CLASS | METH_VARARGS | METH_KEYWORDS,
-    translation_docstring},
-    {"Scale", pyaffine_scale, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
-    scale_docstring},
-    {"Rotation", pyaffine_rotation, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
-    rotation_docstring},
-    {"Reflection", pyaffine_reflection, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
-    reflection_docstring},
-    {"Skew", pyaffine_skew, METH_CLASS | METH_VARARGS| METH_KEYWORDS,
-    skew_docstring},
-    {"apply", pyaffine_apply, METH_O,
-    apply_docstring},
-    // sentinel
+static PyMethodDef AffineMethods[] = {
+    {"eye", pyaffine_eye, METH_NOARGS, eye_docstring},
+    {"from_mat", pyaffine_from_mat, METH_O, from_mat_docstring},
+    {"trans", (PyCFunction) pyaffine_translation, 
+    METH_VARARGS | METH_KEYWORDS, translation_docstring},
+    {"scale", (PyCFunction) pyaffine_scale,
+    METH_VARARGS | METH_KEYWORDS, scale_docstring},
+    {"rot", (PyCFunction) pyaffine_rotation,
+    METH_VARARGS | METH_KEYWORDS, rotation_docstring},
+    {"refl", (PyCFunction) pyaffine_reflection,
+    METH_VARARGS | METH_KEYWORDS, reflection_docstring},
+    {"skew", (PyCFunction) pyaffine_skew,
+    METH_VARARGS | METH_KEYWORDS, skew_docstring},
     {NULL, NULL, 0, NULL}
-};
-
-/// @brief The Custom type structure for the new AffineTransform object
-static PyTypeObject PyAffine_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0) // PyObject_VAR_HEAD
-    .tp_name = "AffineTransform", // const char *tp_name; /* For printing, in format "<module>.<name>" */
-    .tp_doc = "4x4 Affine transform matrix of flints",// const char *tp_doc; /* Documentation string */
-    .tp_basicsize = sizeof(PyAffine), //Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation */
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, // unsigned long tp_flags; /* Flags to define presence of optional/expanded features */
-    // struct _typeobject *tp_base; Used if inheriting from other class
-    .tp_new = pyaffine_new, //newfunc tp_new;
-    .tp_init = pyaffine_init, // initproc tp_init;
-    .tp_repr = pyaffine_str, // reprfunc tp_repr;
-    .tp_str = pyaffine_str, // reprfunc tp_str;
-    .tp_hash = pyaffine_hash, // hashfunc tp_hash;
-    .tp_getset = pyaffine_getset, // struct PyGetSetDef *tp_getset;
-    .tp_methods = pyaffine_methods, // struct PyMethodDef *tp_methods;
-    // unsigned int tp_version_tag;
 };
 
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
-    .m_name = "affine",
+    .m_name = "_c_affine",
     .m_doc = "Affine Transforms",
-    .m_size = -1
+    .m_size = -1,
+    .m_methods = AffineMethods,
 };
 
 /// @brief The module initialization function
-PyMODINIT_FUNC PyInit_affine(void) {
+PyMODINIT_FUNC PyInit__c_affine(void) {
     PyObject* m;
     m = PyModule_Create(&moduledef);
     if (m==NULL) {
@@ -1227,20 +1067,6 @@ PyMODINIT_FUNC PyInit_affine(void) {
     if (import_flint() < 0) {
         PyErr_Print();
         PyErr_SetString(PyExc_SystemError, "Count not load flint c API");
-        return NULL;
-    }
-    // Register the new AffineTransform type
-    if (PyType_Ready(&PyAffine_Type) < 0) {
-        PyErr_Print();
-        PyErr_SetString(PyExc_SystemError, "Could not initialize flint type.");
-        return NULL;
-    }
-    Py_INCREF(&PyAffine_Type);
-    if (PyModule_AddObject(m, "AffineTransform", (PyObject *) &PyAffine_Type) < 0) {
-        Py_DECREF(&PyAffine_Type);
-        Py_DECREF(m);
-        PyErr_Print();
-        PyErr_SetString(PyExc_SystemError, "Could not add affine.AffineTransform type to module.");
         return NULL;
     }
     return m;

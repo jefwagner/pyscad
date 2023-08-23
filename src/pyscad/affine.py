@@ -1,4 +1,4 @@
-## @file pyscad/__init__.py 
+## @file affine.py 
 """
 """
 # Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
@@ -17,5 +17,19 @@
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-__version__ = "0.0.9"
+import numpy as np
+import numpy.typing as npt
+from flint import flint
+
+from ._c_affine import eye, from_mat 
+from ._c_affine import trans, scale, rot, refl, skew
+
+def combine(lhs: npt.NDArray[flint], rhs: npt.NDArray[flint]) -> npt.NDArray[flint]:
+    return np.matmul(lhs, rhs)
+
+def reduce(trasforms: list[npt.NDArray[flint]]) -> npt.NDArray[flint]:
+    out = eye()
+    for tr in transforms:
+        np.matmul(out, tr, out=out)
+    return out
 
