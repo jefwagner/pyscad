@@ -27,6 +27,7 @@
 
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
+#include <numpy/ufuncobject.h>
 
 #include <flint.h>
 #include <numpy_flint.h>
@@ -676,40 +677,108 @@ static PyObject* pyaffine_skew(PyObject* self, PyObject* args, PyObject* kwargs)
 //     }
 //     return (PyObject*) result;
 // }
+/// @brief Helper function for the affine apply macros
+static inline flint flint_identity(flint f){ return f; }
 
 // "(4,4),(3) -> (3)"
 static void pyaffine_apply_vert(char** args, 
                                 npy_intp const* dims,
                                 npy_intp const* strides,
                                 void* data) {
-    npy_intp i, j, k, n;
-    npy_intp N = dims[0]
-    npy_intp four = dims[1];
-    npy_intp three = dims[2];
+    npy_intp i, j, n;
+    npy_intp N = dims[0];
+    // npy_intp four = dims[1];
+    // npy_intp three = dims[2];
     char* af_base = args[0];
+    char* af_i;
+    char* af;
     char* v_in_base = args[1];
+    char* v_in;
     char* v_out_base = args[2];
+    char* v_out;
     npy_intp d_af_n = strides[0];
     npy_intp d_v_in_n = strides[1];
     npy_intp d_v_out_n = strides[2];
     npy_intp d_af_i = strides[3];
     npy_intp d_af_j = strides[4];
     npy_intp d_v_in_j = strides[5];
-    npy_intp_d_v_out_j = strids[6];        
-    flint fv_in, persp_dot;
+    npy_intp d_v_out_i = strides[6];        
+    flint v_in_f, w;
     for (n=0; n<N; n++) {
+        // Matrix mult -> v_out = af(:3,:3).v_in
         for (i=0; i<3; i++) {
+            af_i = af_base + i*d_af_i;
+            v_out = v_out_base + i*d_v_out_i;
             *((flint*) v_out) = int_to_flint(0);
             for (j=0; j<3; j++) {
-                foo;
+                af = af_i + j*d_af_j;
+                v_in = v_in_base + j*d_v_in_j;
+                v_in_f = flint_identity(*((flint*) v_in));
+                flint_inplace_add((flint*) v_out, flint_multiply(*((flint*) af), v_in_f));
             }
-            af += d_af_i;
+            // Add trans -> v_out = v_out + af(:3,4)
+            af = af_i + 3*d_af_j;
+            flint_inplace_add((flint*) v_out, *((flint*) af));
         }
+        // calc homogenous 'w' term
+        af_i = af_base + 3*d_af_i;
+        w = int_to_flint(0);
+        for (j=0; j<3; j++) {
+            af = af_i + j*d_af_j;
+            v_in = v_in_base + j*d_v_in_j;
+            v_in_f = flint_identity(*((flint*) v_in));
+            flint_inplace_add(&w, flint_multiply(*((flint*) af), v_in_f));
+        }
+        af = af_i + 3*d_af_j;
+        flint_inplace_add(&w, *((flint*) af));
+        // rescale
+        if (!flint_eq(w, int_to_flint(0))) {
+            for (i=0; i<3; i++) {
+                v_out = v_out_base + i*d_v_out_i;
+                flint_inplace_divide((flint*) v_out, w);
+            }
+        }
+        af_base += d_af_n;
+        v_in_base += d_v_in_n;
+        v_out_base += d_v_out_n;
     }
 }
 
 // pyaffine_rescale_homo
-// "(4,m?) -> (4,m?)"
+// "(4) -> (4)"
+PyDoc_STRVAR(rescale_docstring, "\
+Rescale an array of 4-length homogenous coordinates x,y,z,w -> x/w,y/w,z/w,1");
+static void pyaffine_rescale_homo(char** args, 
+                                  npy_intp const* dims,
+                                  npy_intp const* strides,
+                                  void* data) {
+    npy_intp i, n;
+    npy_intp N = dims[0];
+    char* h_in_base = args[0];
+    char* h_in;
+    char* h_out_base = args[1];
+    char* h_out;
+    npy_intp d_h_in_n = strides[0];
+    npy_intp d_h_out_n = strides[1];
+    npy_intp d_h_in_i = strides[2];
+    npy_intp d_h_out_i = strides[3];
+    flint w;
+
+    for (n=0; n<N; n++) {
+        w = *((flint*) (h_in_base + 3*d_h_in_i));
+        if (!flint_eq(w, int_to_flint(1))) {
+            for( i=0; i<3; i++) {
+                h_in = h_in_base + i*d_h_in_i;
+                h_out = h_out_base + i*d_h_out_i;
+                *((flint*) h_out) = flint_divide(*((flint*) h_in), w);
+            }
+            h_out = h_out_base + 3*d_h_out_i;
+            *((flint*) h_out) = int_to_flint(1);
+        }
+        h_in_base += d_h_in_n;
+        h_out_base += d_h_out_n;
+    }
+}
 
 // /// @brief Apply the affine transformation to a 3xN? numpy array of flints
 // /// This 
@@ -1050,13 +1119,14 @@ static struct PyModuleDef moduledef = {
 /// @brief The module initialization function
 PyMODINIT_FUNC PyInit__c_affine(void) {
     PyObject* m;
+    PyObject* rescale_ufunc;
     m = PyModule_Create(&moduledef);
     if (m==NULL) {
         PyErr_Print();
         PyErr_SetString(PyExc_SystemError, "Could not create affine module.");
         return NULL;
     }
-    // Import and initialize nmpy
+    // Import and initialize numpy
     import_array();
     if (PyErr_Occurred()) {
         PyErr_Print();
@@ -1069,5 +1139,32 @@ PyMODINIT_FUNC PyInit__c_affine(void) {
         PyErr_SetString(PyExc_SystemError, "Count not load flint c API");
         return NULL;
     }
+    // Import numpys ufunc api
+    import_ufunc();
+    if (PyErr_Occurred()) {
+        PyErr_Print();
+        PyErr_SetString(PyExc_SystemError, "Could not load NumPy ufunc c API.");
+        return NULL;
+    }
+    PyUFuncGenericFunction pyaffine_rescale_funcs[] = {
+        pyaffine_rescale_homo
+    };
+    void* pyaffine_rescale_data[] = {NULL};
+    char pyaffine_rescale_types[] = {NPY_FLINT, NPY_FLINT};
+    char pyaffine_rescale_sig[] = "(4)->(4)";
+    rescale_ufunc = PyUFunc_FromFuncAndDataAndSignature(
+        pyaffine_rescale_funcs,
+        pyaffine_rescale_data,
+        pyaffine_rescale_types,
+        1,
+        1,
+        1,
+        PyUFunc_None,
+        "rescale",
+        rescale_docstring,
+        NULL,
+        pyaffine_rescale_sig
+    );
+
     return m;
 }

@@ -143,7 +143,7 @@ void affine_combine(flint* out, flint* lhs, flint* rhs) {
 /// @brief Maximum number of dimension for an array of vertices
 #define MAX_DIMS 10
 /// @brief Helper function for the affine apply macros
-inline flint flint_identity(flint f){ return f; }
+static inline flint flint_identity(flint f){ return f; }
 
 /// @brief Type generic application of affine transformation to an array of vertices
 #define AFFINE_APPLY_VERT(TYPE, TYPE_CONV_FUNC) \
