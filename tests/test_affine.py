@@ -257,3 +257,13 @@ class TestSkew:
         b[0,2] = 1
         b[0,3] = -1
         assert np.all( a == b )
+
+
+class TestRescale:
+
+    def test_single(self):
+        a = np.array([2,2,2,2], dtype=flint)
+        b = np.empty((4,), dtype=flint)
+        print(np.add.types)
+        affine.rescale(a,b)
+        assert np.all( b == [1,1,1,1] )

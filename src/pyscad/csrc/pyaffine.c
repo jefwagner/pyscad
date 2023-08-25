@@ -681,6 +681,8 @@ static PyObject* pyaffine_skew(PyObject* self, PyObject* args, PyObject* kwargs)
 static inline flint flint_identity(flint f){ return f; }
 
 // "(4,4),(3) -> (3)"
+PyDoc_STRVAR(apply_vert_docstring, "\
+Apply an affine transform to an array of 3-length vertices");
 static void pyaffine_apply_vert(char** args, 
                                 npy_intp const* dims,
                                 npy_intp const* strides,
@@ -1119,7 +1121,9 @@ static struct PyModuleDef moduledef = {
 /// @brief The module initialization function
 PyMODINIT_FUNC PyInit__c_affine(void) {
     PyObject* m;
+    PyObject* d;
     PyObject* rescale_ufunc;
+    PyObject* apply_vert_ufunc;
     m = PyModule_Create(&moduledef);
     if (m==NULL) {
         PyErr_Print();
@@ -1146,25 +1150,28 @@ PyMODINIT_FUNC PyInit__c_affine(void) {
         PyErr_SetString(PyExc_SystemError, "Could not load NumPy ufunc c API.");
         return NULL;
     }
-    PyUFuncGenericFunction pyaffine_rescale_funcs[] = {
-        pyaffine_rescale_homo
-    };
-    void* pyaffine_rescale_data[] = {NULL};
-    char pyaffine_rescale_types[] = {NPY_FLINT, NPY_FLINT};
-    char pyaffine_rescale_sig[] = "(4)->(4)";
+    // Register the ufuncs
     rescale_ufunc = PyUFunc_FromFuncAndDataAndSignature(
-        pyaffine_rescale_funcs,
-        pyaffine_rescale_data,
-        pyaffine_rescale_types,
-        1,
-        1,
-        1,
-        PyUFunc_None,
-        "rescale",
-        rescale_docstring,
-        NULL,
-        pyaffine_rescale_sig
-    );
+        NULL, NULL, NULL, 0, 1, 1, PyUFunc_None,
+        "rescale", rescale_docstring, 0, "(4)->(4)");
+    int pyaffine_rescale_types[] = {NPY_FLINT, NPY_FLINT};
+    PyUFunc_RegisterLoopForType(
+        (PyUFuncObject*) rescale_ufunc, NPY_FLINT,
+        &pyaffine_rescale_homo, pyaffine_rescale_types, NULL);
+    d = PyModule_GetDict(m);
+    PyDict_SetItemString(d, "rescale", rescale_ufunc);
+    Py_DECREF(rescale_ufunc);
+    // Register the ufuncs
+    apply_vert_ufunc = PyUFunc_FromFuncAndDataAndSignature(
+        NULL, NULL, NULL, 0, 2, 1, PyUFunc_None,
+        "apply_vert", apply_vert_docstring, 0, "(4,4),(3)->(3)");
+    int pyaffine_apply_vert_types[] = {NPY_FLINT, NPY_FLINT, NPY_FLINT};
+    PyUFunc_RegisterLoopForType(
+        (PyUFuncObject*) apply_vert_ufunc, NPY_FLINT,
+        &pyaffine_apply_vert, pyaffine_apply_vert_types, NULL);
+    d = PyModule_GetDict(m);
+    PyDict_SetItemString(d, "apply_vert", apply_vert_ufunc);
+    Py_DECREF(apply_vert_ufunc);
 
     return m;
 }
