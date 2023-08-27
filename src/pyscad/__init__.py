@@ -17,5 +17,5 @@
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-__version__ = "0.0.9"
+__version__ = "0.0.10"
 

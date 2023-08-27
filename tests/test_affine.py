@@ -43,7 +43,7 @@ class TestCreation:
 class TestTranslation:
 
     def test_translation_exc(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.trans()
         with pytest.raises(ValueError):
             a = affine.trans(1,2)
@@ -51,7 +51,7 @@ class TestTranslation:
             a = affine.trans([1,2])
         with pytest.raises(ValueError):
             a = affine.trans([[1,2,3]])
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.trans([1,2,3], foo=[4,5,6])
 
     def test_translation(self):
@@ -72,7 +72,7 @@ class TestTranslation:
 class TestScale:
 
     def test_scale_exc(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.scale()
         with pytest.raises(ValueError):
             a = affine.scale(1,2)
@@ -80,7 +80,7 @@ class TestScale:
             a = affine.scale([1])
         with pytest.raises(ValueError):
             a = affine.scale([[1,2,3]])
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.scale([1,2,3], foo=[4,5,6])
 
     def test_scale_scalar(self):
@@ -125,9 +125,9 @@ class TestScale:
 class TestRotation:
 
     def test_rotation_exc(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.rot()
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.rot(1)
         with pytest.raises(ValueError):
             a = affine.rot(1,2,3)
@@ -137,7 +137,7 @@ class TestRotation:
             a = affine.rot('xoo',1)
         with pytest.raises(ValueError):
             a = affine.rot([1],1)
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.rot([1,2,3],1, foo=[0,0,0])
 
     def test_rot_x(self):
@@ -181,7 +181,7 @@ class TestRotation:
 class TestRefection:
 
     def test_refl_exc(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.refl()
         with pytest.raises(ValueError):
             a = affine.refl('xxo')
@@ -189,7 +189,7 @@ class TestRefection:
             a = affine.refl(1)
         with pytest.raises(ValueError):
             a = affine.refl([1,2])
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.refl([1,2,3], foo=[0,0,0])
         
     def test_refl_xyz(self):
@@ -226,15 +226,15 @@ class TestRefection:
 class TestSkew:
 
     def test_skew_exc(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.skew()
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.skew('x')
         with pytest.raises(ValueError):
             a = affine.skew([1], [1,2,3])
         with pytest.raises(ValueError):
             a = affine.skew('z', [1,2])
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             a = affine.skew('z', [1,2,3], foo=[0,0,0])
 
     def test_skew_z(self):
@@ -264,6 +264,61 @@ class TestRescale:
     def test_single(self):
         a = np.array([2,2,2,2], dtype=flint)
         b = np.empty((4,), dtype=flint)
-        print(np.add.types)
         affine.rescale(a,b)
         assert np.all( b == [1,1,1,1] )
+
+    def test_multiple(self):
+        a = np.array([[2,2,2,2],[3,3,3,3],[4,4,4,4]], dtype=flint)
+        b = np.empty((3,4), dtype=flint)
+        affine.rescale(a,b)
+        assert np.all( b == np.ones((3,4)) )
+
+class TestCombine:
+
+    def test_eye(self):
+        a = affine.eye()
+        b = affine.rot('x',np.pi/2)
+        c = affine.combine(a,b)
+        assert np.all( c == b )
+        c = affine.combine(b,a)
+        assert np.all( c == b )
+
+    def test_combine(self):
+        a = affine.rot('x', np.pi)
+        b = affine.combine(a, a)
+        assert np.all( b == np.eye(4) )
+
+    def test_reduce(self):
+        a = affine.rot('x', 2*np.pi/10)
+        b = affine.transform_reduce([a]*10)
+        assert np.all( b == np.eye(4) )
+
+
+class TestApply:
+
+    def test_apply_vertex(self):
+        v = [1,0,0]
+        r = affine.rot('z',np.pi/2)
+        vr = affine.apply(r, v)
+        assert np.all( vr == [0,1,0] )
+
+    def test_apply_vertices(self):
+        v = [[1,0,0],[2,0,0],[3,0,0]]
+        vt = [[0,1,0],[0,2,0],[0,3,0]]
+        r = affine.rot('z',np.pi/2)
+        vr = affine.apply(r, v)
+        assert np.all( vr == vt )
+
+    def test_apply_homo(self):
+        h = [1,0,0,1]
+        r = affine.rot('z',np.pi/2)
+        hr = affine.apply(r, h)
+        assert np.all( hr == [0,1,0,1] )
+
+    def test_apply_homos(self):
+        h = [[1,0,0,1], [2,0,0,1], [3,0,0,1], [4,0,0,1]]
+        ht = [[0,1,0,1], [0,2,0,1], [0,3,0,1], [0,4,0,1]]
+        r = affine.rot('z',np.pi/2)
+        hr = affine.apply(r, h)
+        print(hr)
+        assert np.all( hr == ht )
