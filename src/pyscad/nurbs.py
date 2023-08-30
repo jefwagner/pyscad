@@ -1,4 +1,4 @@
-## @file pyscad/__init__.py 
+## @file nurbs.py 
 """
 """
 # Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
@@ -17,5 +17,25 @@
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-__version__ = "0.0.11"
+import numpy as np
+from flint import flint
 
+class NurbsCurve:
+    """Non-Uniform Rational Basis Spline
+    
+    :param verts: A reference to a Nx3 numpy array of vertices
+    :param cpts: The list of control points as indices into the verts array
+    :param w: The list of weights for the control points
+    :param kv: The splines knot-vector
+    """
+
+    def __init__(self):
+        self.verts = verts
+        self.cpts = np.array(cpts, dtype=np.int16)
+        self.w = np.array(w, dtype=flint)
+        self.kv = np.array(kv, dtype=flint)
+
+    @property
+    def deg(self) -> int:
+        """The degree of the spline basis functions"""
+        return self.kv.shape[0]-self.cpts.shape[0]-1

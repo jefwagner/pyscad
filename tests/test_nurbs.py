@@ -1,4 +1,4 @@
-## @file pyscad/__init__.py 
+## @file test_nurbs.py 
 """
 """
 # Copyright (c) 2023, Jef Wagner <jefwagner@gmail.com>
@@ -17,5 +17,12 @@
 # You should have received a copy of the GNU General Public License along with
 # pyscad. If not, see <https://www.gnu.org/licenses/>.
 
-__version__ = "0.0.11"
+from pyscad.nurbs import NurbsCurve
 
+class TestCurve:
+
+    def test_init(self):
+        assert False
+
+    def test_deg(self):
+        assert False

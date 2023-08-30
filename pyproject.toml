@@ -16,6 +16,7 @@ dependencies = [
     "numpy>=1.17",
     "numpy-flint>=0.3.2",
     # "numpy-flint @ file:///home/jef/numpy-flint/dist/numpy_flint-0.3.3-cp39-cp39-linux_aarch64.whl",
+    "simple-transforms",
     "pytest"
 ]
 dynamic = ["version"]
